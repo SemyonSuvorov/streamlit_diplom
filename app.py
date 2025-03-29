@@ -1,233 +1,252 @@
 import streamlit as st
-import os
+import pandas as pd
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import re
+import hashlib
 
-port = int(os.environ.get("PORT", 8501))
+# Конфигурация модели
+# MODEL_NAME = "cointegrated/rut5-base"
+# CACHE_DIR = "models"
 
-def intro():
-    import streamlit as st
+def init_session_state():
+    """Инициализация всех необходимых переменных в session state"""
+    session_vars = {
+        'raw_df': None,
+        'processed_df': None,
+        'original_columns': [],
+        'current_columns': [],
+        'temp_columns': [],
+    }
+    for var, default in session_vars.items():
+        if var not in st.session_state:
+            st.session_state[var] = default
 
-    st.write("# Welcome to Streamlit! 👋")
-    st.sidebar.success("Select a demo above.")
+def manual_rename_interface():
+    """Интерфейс для ручного переименования столбцов"""
+    st.subheader("✏️ Редактор названий столбцов")
+    
+    # Инициализация временных значений
+    if not st.session_state.temp_columns:
+        st.session_state.temp_columns = st.session_state.current_columns.copy()
 
-    st.markdown(
-        """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
+    # Заголовки столбцов
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Исходное название**")
+    with col2:
+        st.markdown("**Новое название**")
 
-        **👈 Select a demo from the dropdown on the left** to see some examples
-        of what Streamlit can do!
-
-        ### Want to learn more?
-
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-
-        ### See more complex demos
-
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
-    """
-    )
-
-def mapping_demo():
-    import streamlit as st
-    import pandas as pd
-    import pydeck as pdk
-
-    from urllib.error import URLError
-
-    st.markdown(f"# {list(page_names_to_funcs.keys())[2]}")
-    st.write(
-        """
-        This demo shows how to use
-[`st.pydeck_chart`](https://docs.streamlit.io/develop/api-reference/charts/st.pydeck_chart)
-to display geospatial data.
-"""
-    )
-
-    @st.cache_data
-    def from_data_file(filename):
-        url = (
-            "http://raw.githubusercontent.com/streamlit/"
-            "example-data/master/hello/v1/%s" % filename
-        )
-        return pd.read_json(url)
-
-    try:
-        ALL_LAYERS = {
-            "Bike Rentals": pdk.Layer(
-                "HexagonLayer",
-                data=from_data_file("bike_rental_stats.json"),
-                get_position=["lon", "lat"],
-                radius=200,
-                elevation_scale=4,
-                elevation_range=[0, 1000],
-                extruded=True,
-            ),
-            "Bart Stop Exits": pdk.Layer(
-                "ScatterplotLayer",
-                data=from_data_file("bart_stop_stats.json"),
-                get_position=["lon", "lat"],
-                get_color=[200, 30, 0, 160],
-                get_radius="[exits]",
-                radius_scale=0.05,
-            ),
-            "Bart Stop Names": pdk.Layer(
-                "TextLayer",
-                data=from_data_file("bart_stop_stats.json"),
-                get_position=["lon", "lat"],
-                get_text="name",
-                get_color=[0, 0, 0, 200],
-                get_size=15,
-                get_alignment_baseline="'bottom'",
-            ),
-            "Outbound Flow": pdk.Layer(
-                "ArcLayer",
-                data=from_data_file("bart_path_stats.json"),
-                get_source_position=["lon", "lat"],
-                get_target_position=["lon2", "lat2"],
-                get_source_color=[200, 30, 0, 160],
-                get_target_color=[200, 30, 0, 160],
-                auto_highlight=True,
-                width_scale=0.0001,
-                get_width="outbound",
-                width_min_pixels=3,
-                width_max_pixels=30,
-            ),
-        }
-        st.sidebar.markdown("### Map Layers")
-        selected_layers = [
-            layer
-            for layer_name, layer in ALL_LAYERS.items()
-            if st.sidebar.checkbox(layer_name, True)
-        ]
-        if selected_layers:
-            st.pydeck_chart(
-                pdk.Deck(
-                    map_style="mapbox://styles/mapbox/light-v9",
-                    initial_view_state={
-                        "latitude": 37.76,
-                        "longitude": -122.4,
-                        "zoom": 11,
-                        "pitch": 50,
-                    },
-                    layers=selected_layers,
-                )
+    # Создаем строки для каждой пары названий
+    temp_names = []
+    for i, (orig_col, current_col) in enumerate(zip(
+        st.session_state.original_columns,
+        st.session_state.current_columns
+    )):
+        row_cols = st.columns(2)
+        with row_cols[0]:
+            st.code(orig_col)
+        with row_cols[1]:
+            new_name = st.text_input(
+                label=f"Редактирование {orig_col}",
+                value=st.session_state.temp_columns[i],
+                key=f"col_rename_{i}",
+                label_visibility="collapsed"
             )
+            temp_names.append(new_name.strip())
+    
+    st.session_state.temp_columns = temp_names
+
+    # Кнопки управления
+    btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
+    with btn_col1:
+        reset_btn = st.button("🔄 Сбросить к исходным", use_container_width=True)
+
+    with btn_col3:
+        apply_btn = st.button("✅ Применить все изменения", use_container_width=True)
+
+    # Обработка применения изменений
+    if apply_btn:
+        handle_apply_changes()
+
+    # Обработка сброса
+    if reset_btn:
+        handle_reset_columns()
+        # Показываем сохраненные сообщения
+        
+    if 'rename_messages' in st.session_state:
+        msg = st.session_state.rename_messages
+        if msg['type'] == 'error':
+            for m in msg['content']:
+                st.error(m)
+        elif msg['type'] == 'success':
+            st.success(msg['content'])
+        elif msg['type'] == 'info':
+            st.info(msg['content'])
+        
+        # Удаляем сообщение после показа
+        del st.session_state.rename_messages
+
+def handle_apply_changes():
+    """Обработчик применения изменений"""
+    error_messages = []
+    new_columns = st.session_state.temp_columns
+    
+    # Проверки
+    if any(name == "" for name in new_columns):
+        error_messages.append("🚫 Названия не могут быть пустыми!")
+    if len(set(new_columns)) != len(new_columns):
+        error_messages.append("🚫 Названия должны быть уникальными!")
+
+    # Сохраняем сообщения в session_state
+    if error_messages:
+        st.session_state.rename_messages = {'type': 'error', 'content': error_messages}
+    else:
+        if new_columns == st.session_state.current_columns:
+            st.session_state.rename_messages = {'type': 'info', 'content': "ℹ️ Нет новых изменений для применения"}
         else:
-            st.error("Please choose at least one layer above.")
-    except URLError as e:
-        st.error(
-            """
-            **This demo requires internet access.**
-
-            Connection error: %s
-        """
-            % e.reason
-        )
-
-def plotting_demo():
-    import streamlit as st
-    import time
-    import numpy as np
-
-    st.markdown(f'# {list(page_names_to_funcs.keys())[1]}')
-    st.write(
-        """
-        This demo illustrates a combination of plotting and animation with
-Streamlit. We're generating a bunch of random numbers in a loop for around
-5 seconds. Enjoy!
-"""
-    )
-
-    progress_bar = st.sidebar.progress(0)
-    status_text = st.sidebar.empty()
-    last_rows = np.random.randn(1, 1)
-    chart = st.line_chart(last_rows)
-
-    for i in range(1, 101):
-        new_rows = last_rows[-1, :] + np.random.randn(5, 1).cumsum(axis=0)
-        status_text.text("%i%% Complete" % i)
-        chart.add_rows(new_rows)
-        progress_bar.progress(i)
-        last_rows = new_rows
-        time.sleep(0.05)
-
-    progress_bar.empty()
-
-    # Streamlit widgets automatically run the script from top to bottom. Since
-    # this button is not connected to any other logic, it just causes a plain
-    # rerun.
-    st.button("Re-run")
+            st.session_state.current_columns = new_columns
+            st.session_state.processed_df.columns = new_columns
+            st.session_state.rename_messages = {'type': 'success', 'content': "✅ Изменения успешно применены!"}
+        
+        st.session_state.temp_columns = new_columns.copy()
+    
+    # Принудительное обновление с сохранением сообщений
+    st.rerun()
 
 
-def data_frame_demo():
-    import streamlit as st
-    import pandas as pd
-    import altair as alt
+def handle_reset_columns():
+    """Обработчик сброса настроек"""
+    st.session_state.temp_columns = st.session_state.original_columns.copy()
+    st.session_state.current_columns = st.session_state.original_columns.copy()
+    st.session_state.processed_df.columns = st.session_state.original_columns
+    st.success("🔄 Названия сброшены к исходным!")
 
-    from urllib.error import URLError
-
-    st.markdown(f"# {list(page_names_to_funcs.keys())[3]}")
-    st.write(
-        """
-        This demo shows how to use `st.write` to visualize Pandas DataFrames.
-
-(Data courtesy of the [UN Data Explorer](http://data.un.org/Explorer.aspx).)
-"""
-    )
-
-    @st.cache_data
-    def get_UN_data():
-        AWS_BUCKET_URL = "http://streamlit-demo-data.s3-us-west-2.amazonaws.com"
-        df = pd.read_csv(AWS_BUCKET_URL + "/agri.csv.gz")
-        return df.set_index("Region")
-
-    try:
-        df = get_UN_data()
-        countries = st.multiselect(
-            "Choose countries", list(df.index), ["China", "United States of America"]
-        )
-        if not countries:
-            st.error("Please select at least one country.")
-        else:
-            data = df.loc[countries]
-            data /= 1000000.0
-            st.write("### Gross Agricultural Production ($B)", data.sort_index())
-
-            data = data.T.reset_index()
-            data = pd.melt(data, id_vars=["index"]).rename(
-                columns={"index": "year", "value": "Gross Agricultural Product ($B)"}
-            )
-            chart = (
-                alt.Chart(data)
-                .mark_area(opacity=0.3)
-                .encode(
-                    x="year:T",
-                    y=alt.Y("Gross Agricultural Product ($B):Q", stack=None),
-                    color="Region:N",
+def main():
+    st.set_page_config(page_title="Data Assistant", page_icon="📊", layout="wide")
+    init_session_state()
+    
+    st.title("📊 Ассистент для работы с данными")
+    
+    # Загрузка данных
+    uploaded_file = st.file_uploader("Загрузите файл данных (CSV/Excel)", type=["csv", "xlsx"])
+    
+    if uploaded_file:
+        try:
+            if st.session_state.raw_df is None:
+                load_data(uploaded_file)
+            
+            # Основные вкладки
+            tab1, tab2, tab3 = st.tabs(["Данные", "Переименование", "Анализ"])
+            
+            with tab1:
+                show_data_preview()
+            
+            with tab2:
+                manual_rename_interface()
+        
+            with tab3:
+                #show_analysis_tab()
+                date_col = st.selectbox(
+                    "Выберите столбец с датой",
+                    options=st.session_state.current_columns
                 )
-            )
-            st.altair_chart(chart, use_container_width=True)
-    except URLError as e:
-        st.error(
-            """
-            **This demo requires internet access.**
 
-            Connection error: %s
-        """
-            % e.reason
+
+        except Exception as e:
+            st.error(f"🚨 Ошибка обработки файла: {str(e)}")
+    else:
+        st.info("👆 Пожалуйста, загрузите файл для начала работы")
+
+def load_data(uploaded_file):
+    """Загрузка и инициализация данных"""
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+    
+    st.session_state.update({
+        'raw_df': df.copy(),
+        'processed_df': df.copy(),
+        'original_columns': df.columns.tolist(),
+        'current_columns': df.columns.tolist().copy(),
+        'temp_columns': df.columns.tolist().copy(),
+    })
+
+def show_data_preview():
+    """Отображение предпросмотра данных"""
+    st.subheader("Просмотр данных")
+    
+    # Создаем копию DataFrame с актуальными названиями колонок
+    preview_df = st.session_state.processed_df.copy()
+    preview_df.columns = st.session_state.current_columns
+    
+    st.dataframe(
+        preview_df,
+        use_container_width=True
+    )
+
+def show_analysis_tab():
+    """Вкладка анализа данных"""
+    st.subheader("Анализ данных")
+    if st.session_state.processed_df is not None:
+        date_col = st.selectbox(
+            "Выберите столбец с датой",
+            options=st.session_state.current_columns
         )
+        
+        try:
+            st.session_state.processed_df[date_col] = pd.to_datetime(
+                st.session_state.processed_df[date_col]
+            )
+            st.line_chart(st.session_state.processed_df.set_index(date_col))
+        except Exception as e:
+            st.error(f"⏰ Ошибка преобразования даты: {str(e)}")
 
-page_names_to_funcs = {
-    "—": intro,
-    "Plotting Demo": plotting_demo,
-    "Mapping Demo": mapping_demo,
-    "DataFrame Demo": data_frame_demo
-}
 
-demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
-page_names_to_funcs[demo_name]()
+if __name__ == "__main__":
+    main()
+
+# # Загрузка модели
+# @st.cache_resource
+# def load_model():
+#     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, cache_dir=CACHE_DIR)
+#     model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME, cache_dir=CACHE_DIR)
+#     return tokenizer, model
+
+# # Генерация новых названий
+# def generate_new_names(columns, context=""):
+#     try:
+#         tokenizer, model = load_model()
+#         prompt = f"""
+#         Переименуй названия колонок на русском языке в понятные, сохранив порядок.
+#         Контекст: {context}. Исходные названия: {', '.join(columns)}.
+#         Ответ должен содержать только новые названия через запятую.
+#         Новые названия:"""
+        
+#         inputs = tokenizer(
+#             prompt,
+#             return_tensors="pt",
+#             max_length=512,
+#             truncation=True,
+#             padding="max_length"
+#         )
+        
+#         outputs = model.generate(
+#             inputs.input_ids,
+#             max_length=50,
+#             num_beams=5,
+#             early_stopping=True
+#         )
+        
+#         new_names = tokenizer.decode(outputs[0], skip_special_tokens=True)
+#         new_names = re.sub(r"[^а-яА-Я0-9,\-_\s]", "", new_names)
+#         new_names = [name.strip().replace(' ', '_') for name in new_names.split(",")]
+        
+#         if len(new_names) != len(columns):
+#             return columns
+#         return new_names
+    
+#     except Exception as e:
+#         st.error(f"Ошибка генерации: {str(e)}")
+#         return columns

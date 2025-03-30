@@ -50,40 +50,36 @@ def show_select_cols_tab():
         col1, col2 = st.columns([1, 3])
         
         with col1:
-            # Получаем текущие индексы для сохранения выбора
-            date_col_index = (
-                st.session_state.current_columns.index(st.session_state.date_col) 
-                if st.session_state.date_col in st.session_state.current_columns 
-                else 0
-            )
-            target_col_index = (
-                st.session_state.current_columns.index(st.session_state.target_col) 
-                if st.session_state.target_col in st.session_state.current_columns 
-                else 0
-            )
-            
+            # Всегда использовать актуальные значения из session_state
+            current_date_col = st.session_state.date_col or st.session_state.current_columns[0]
+            current_target_col = st.session_state.target_col or st.session_state.current_columns[-1]
+
             # Выбор столбца с датой
-            date_col = st.selectbox(
+            new_date_col = st.selectbox(
                 "Выберите столбец с датой",
                 options=st.session_state.current_columns,
-                index=date_col_index,
+                index=st.session_state.current_columns.index(current_date_col),
                 key="date_col_selector"
             )
             
             # Выбор целевой переменной
-            target_col = st.selectbox(
+            new_target_col = st.selectbox(
                 "Выберите столбец с зависимой переменной",
-                options=st.session_state.current_columns,
-                index=target_col_index,
+                options=[c for c in st.session_state.current_columns if c != new_date_col],
+                index=0,
                 key="target_col_selector"
             )
             
-            # Сохраняем выбор только если изменился
-            if date_col != st.session_state.date_col:
-                st.session_state.date_col = date_col
-            if target_col != st.session_state.target_col:
-                st.session_state.target_col = target_col
-
+            # Немедленное обновление состояния
+            if new_date_col != st.session_state.date_col:
+                st.session_state.date_col = new_date_col
+                # Сброс целевой переменной при изменении даты
+                if new_target_col == new_date_col:
+                    st.session_state.target_col = None
+            
+            if new_target_col != st.session_state.target_col:
+                st.session_state.target_col = new_target_col
+                
         with col2:
             # Проверяем что оба столбца выбраны
             if st.session_state.date_col and st.session_state.target_col:

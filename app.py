@@ -10,51 +10,42 @@ def navigation_buttons():
     col1, col2, col3 = st.columns([1, 3, 1])
     
     with col1:
-        inner_col1, inner_col2 = st.columns([1, 2])
-        with inner_col1:
-            if st.session_state.step > 1:
-                if st.button("←", type="secondary", use_container_width=True):
-                    st.session_state.step -= 1
-                    st.rerun()
+        if st.session_state.step > 1:
+            if st.button("← Назад", use_container_width=True):
+                st.session_state.step -= 1
+                st.rerun()
     
     with col3:
         allow_next = False
         if st.session_state.step == 1:
-            # Проверяем актуальный статус загрузки файла
-            allow_next = st.session_state.date_col and st.session_state.target_col
+            # Обновленная проверка с сохранением состояния
+            valid_selection = (
+                st.session_state.date_col and 
+                st.session_state.target_col and 
+                st.session_state.date_col != st.session_state.target_col
+            )
+            allow_next = valid_selection and st.session_state.raw_df is not None
 
-        inner_col1, inner_col2 = st.columns([2, 1])
-        with inner_col2:
-            if st.session_state.step == 1:
-                if allow_next:
-                    if st.button("→", type="primary", use_container_width=True):
-                        st.session_state.step += 1
-                        st.rerun()
-                else:
-                    st.button(
-                        "→", 
-                        disabled=True, 
-                        help="Сначала загрузите файл и выберите столбец с датой и зависимой переменной",
-                        use_container_width=True
-                    )
-            
-            elif st.session_state.step == 2:
-                if allow_next:
-                    if st.button("→", type="primary", use_container_width=True):
-                        st.success("Переход к анализу данных")
-                        # Логика перехода
-                else:
-                    st.button(
-                        "→", 
-                        disabled=True, 
-                        help="Выберите обязательные столбцы",
-                        use_container_width=True
-                    )
+        if st.session_state.step == 1:
+            if allow_next:
+                if st.button("Далее →", type="primary", use_container_width=True):
+                    st.session_state.step += 1
+                    st.rerun()
+            else:
+                help_msg = ("Выберите разные столбцы даты и целевой переменной" 
+                           if st.session_state.date_col == st.session_state.target_col 
+                           else "Загрузите данные и выберите столбцы")
+                st.button(
+                    "Далее →", 
+                    disabled=True, 
+                    help=help_msg,
+                    use_container_width=True
+                )
 
 
 def init_session_state():
-    """Инициализация всех необходимых переменных в session state"""
-    session_vars = {
+    """Инициализация session state с сохранением выбранных столбцов"""
+    defaults = {
         'step': 1,
         'raw_df': None,
         'processed_df': None,
@@ -64,11 +55,12 @@ def init_session_state():
         'file_uploaded': False,
         'date_col': None,
         'target_col': None,
-        'current_file': None  
+        'current_file': None
     }
-    for var, default in session_vars.items():
-        if var not in st.session_state:
-            st.session_state[var] = default
+    
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
 
 def main():
@@ -84,6 +76,7 @@ def main():
     
     elif st.session_state.step == 2:
         st.session_state.date_col
+        st.session_state.target_col
 
    
 

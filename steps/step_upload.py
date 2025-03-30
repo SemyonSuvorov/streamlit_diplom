@@ -9,13 +9,24 @@ def load_data(uploaded_file):
     else:
         df = pd.read_excel(uploaded_file)
     
+    # Сбрасываем выбор только если файл действительно новый
+    if (not st.session_state.current_file or 
+        uploaded_file.file_id != st.session_state.current_file.file_id):
+        date_col = None
+        target_col = None
+    else:
+        date_col = st.session_state.date_col
+        target_col = st.session_state.target_col
+    
     st.session_state.update({
         'raw_df': df.copy(),
         'processed_df': df.copy(),
         'original_columns': df.columns.tolist(),
         'current_columns': df.columns.tolist().copy(),
         'temp_columns': df.columns.tolist().copy(),
-        'current_file': uploaded_file 
+        'current_file': uploaded_file,
+        'date_col': date_col,
+        'target_col': target_col
     })
 
 def show_data_preview():
@@ -39,10 +50,23 @@ def show_select_cols_tab():
         col1, col2 = st.columns([1, 3])
         
         with col1:
+            # Получаем текущие индексы для сохранения выбора
+            date_col_index = (
+                st.session_state.current_columns.index(st.session_state.date_col) 
+                if st.session_state.date_col in st.session_state.current_columns 
+                else 0
+            )
+            target_col_index = (
+                st.session_state.current_columns.index(st.session_state.target_col) 
+                if st.session_state.target_col in st.session_state.current_columns 
+                else 0
+            )
+            
             # Выбор столбца с датой
             date_col = st.selectbox(
                 "Выберите столбец с датой",
                 options=st.session_state.current_columns,
+                index=date_col_index,
                 key="date_col_selector"
             )
             
@@ -50,12 +74,15 @@ def show_select_cols_tab():
             target_col = st.selectbox(
                 "Выберите столбец с зависимой переменной",
                 options=st.session_state.current_columns,
+                index=target_col_index,
                 key="target_col_selector"
             )
             
-            # Сохраняем выбор в session state
-            st.session_state.date_col = date_col
-            st.session_state.target_col = target_col 
+            # Сохраняем выбор только если изменился
+            if date_col != st.session_state.date_col:
+                st.session_state.date_col = date_col
+            if target_col != st.session_state.target_col:
+                st.session_state.target_col = target_col
 
         with col2:
             # Проверяем что оба столбца выбраны
@@ -72,7 +99,6 @@ def show_select_cols_tab():
                     # Сортируем по дате
                     plot_df = plot_df.sort_values(st.session_state.date_col)
                     
-                    # Строим график
                     fig = px.line(
                         plot_df,
                         x=st.session_state.date_col,
@@ -84,7 +110,6 @@ def show_select_cols_tab():
                         }
                     )
                     
-                    # Настраиваем оформление
                     fig.update_layout(
                         hovermode="x unified",
                         showlegend=False,

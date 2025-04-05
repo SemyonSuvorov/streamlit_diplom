@@ -1,6 +1,6 @@
-# app.py
 from steps import step_upload, step_preprocessing
 import streamlit as st
+import pandas as pd
 
 def navigation_buttons():
     """Кнопки навигации с обработкой фильтрации данных"""
@@ -28,6 +28,16 @@ def navigation_buttons():
                         st.session_state.filtered_df = st.session_state.processed_df[
                             [st.session_state.date_col, st.session_state.target_col]
                         ].copy()
+                        
+                        st.session_state.original_filtered_df = st.session_state.filtered_df.copy()
+
+                        st.session_state.original_missing = st.session_state.processed_df[
+                            st.session_state.target_col
+                        ].isnull().copy()
+                        
+                        st.session_state.filtered_df[st.session_state.date_col] = pd.to_datetime(
+                            st.session_state.filtered_df[st.session_state.date_col]
+                        )
                         st.session_state.step += 1
                         st.rerun()
                     except Exception as e:
@@ -56,7 +66,9 @@ def init_session_state():
         'file_uploaded': False,
         'date_col': None,
         'target_col': None,
-        'current_file': None
+        'current_file': None,
+        'preprocessing_history':[],
+        'original_missing': None
     }
     for key, value in defaults.items():
         if key not in st.session_state:

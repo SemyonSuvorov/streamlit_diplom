@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
 
 def load_data(uploaded_file):
     """Загрузка и инициализация данных"""
@@ -17,6 +18,7 @@ def load_data(uploaded_file):
     else:
         date_col = st.session_state.date_col
         target_col = st.session_state.target_col
+
     
     st.session_state.update({
         'raw_df': df.copy(),
@@ -45,7 +47,6 @@ def show_data_preview():
 def show_select_cols_tab():
     """Вкладка выбора даты и зависимой переменной с визуализацией"""
     st.subheader("📌 Выбор переменных")
-    
     if st.session_state.processed_df is not None:
         col1, col2 = st.columns([1, 3])
         
@@ -73,12 +74,15 @@ def show_select_cols_tab():
             # Немедленное обновление состояния
             if new_date_col != st.session_state.date_col:
                 st.session_state.date_col = new_date_col
+                st.session_state.original_missing = None  # Сбрасываем при изменении даты
                 # Сброс целевой переменной при изменении даты
                 if new_target_col == new_date_col:
                     st.session_state.target_col = None
+                    st.session_state.original_missing = st.session_state.processed_df[new_target_col].isnull().to_numpy().copy()
             
             if new_target_col != st.session_state.target_col:
                 st.session_state.target_col = new_target_col
+                st.session_state.original_missing = st.session_state.processed_df[new_target_col].isnull().to_numpy().copy()
                 
         with col2:
             # Проверяем что оба столбца выбраны
@@ -90,6 +94,7 @@ def show_select_cols_tab():
                     # Преобразуем дату
                     plot_df[st.session_state.date_col] = pd.to_datetime(
                         plot_df[st.session_state.date_col]
+                       , dayfirst=True
                     )
                     
                     # Сортируем по дате

@@ -77,56 +77,58 @@ def run_step():
             st.markdown("**⏰ Анализ временных меток**")
             time_container = st.container(border=True)
             with time_container:
-                if pd.api.types.is_datetime64_any_dtype(st.session_state.filtered_df[st.session_state.date_col]):
-                    dates = st.session_state.filtered_df[st.session_state.date_col]
-                    
-                    cols = st.columns(4)
-                    with cols[0]:
-                        st.metric("Первая дата", dates.min().strftime('%d.%m.%Y'))
-                    with cols[1]:
-                        st.metric("Последняя дата", dates.max().strftime('%d.%m.%Y'))
-                    with cols[2]:
-                        delta = dates.max() - dates.min()
-                        st.metric("Период покрытия", f"{delta.days} дней")
-                    with cols[3]:
-                        freq = pd.infer_freq(dates)
-                        freq_map = {
-                            'D': 'Дневная',
-                            'M': 'Месячная',
-                            'Y': 'Годовая',
-                            'H': 'Почасовая',
-                            None: 'Не определена'
-                        }
-                        st.session_state.freq = freq
-                        st.metric("Частота", freq_map.get(freq, freq))
-                    
-                    # Проверка пропусков дат
-                    try:
-                        full_range = pd.date_range(start=dates.min(), end=dates.max(), freq=freq)
-                        missing = full_range.difference(dates)
-                        st.warning(f"Обнаружено {len(missing)} пропущенных временных меток") if len(missing) > 0 else st.success("Пропущенные даты отсутствуют")
-                    except:
-                        st.error("Ошибка при проверке временного ряда")
+                dates = pd.to_datetime(st.session_state.filtered_df[st.session_state.date_col])
+                #dates = st.session_state.filtered_df[st.session_state.date_col]
+                
+                cols = st.columns(4)
+                with cols[0]:
+                    st.metric("Первая дата", dates.min().strftime('%d.%m.%Y'))
+                with cols[1]:
+                    st.metric("Последняя дата", dates.max().strftime('%d.%m.%Y'))
+                with cols[2]:
+                    delta = dates.max() - dates.min()
+                    st.metric("Период покрытия", f"{delta.days} дней")
+                with cols[3]:
+                    freq = pd.infer_freq(dates)
+                    freq_map = {
+                        'D': 'Дневная',
+                        'M': 'Месячная',
+                        'Y': 'Годовая',
+                        'H': 'Почасовая',
+                        None: 'Не определена'
+                    }
+                    st.session_state.freq = freq
+                    st.metric("Частота", freq_map.get(freq, freq))
+                
+                # Проверка пропусков дат
+                try:
+                    full_range = pd.date_range(start=dates.min(), end=dates.max(), freq=freq)
+                    missing = full_range.difference(dates)
+                    st.warning(f"Обнаружено {len(missing)} пропущенных временных меток") if len(missing) > 0 else st.success("Пропущенные даты отсутствуют")
+                except:
+                    st.error("Ошибка при проверке временного ряда")
                       
         with tab2:
             st.write("### 📈 Визуализация данных")
-            if st.session_state.original_missing is not None:
+            
+            # Инициализация original_missing
+            if 'original_missing' not in st.session_state:
+                st.session_state.original_missing = None
+
+            if 'filtered_df' in st.session_state and st.session_state.filtered_df is not None:
                 plot_df = st.session_state.filtered_df.copy()
                 date_col = st.session_state.date_col
                 target_col = st.session_state.target_col
-                
+
                 try:
                     plot_df[date_col] = pd.to_datetime(plot_df[date_col])
                     plot_df = plot_df.sort_values(date_col)
                     
-                    # Определяем заполненные пропуски
-                    plot_df['filled'] = np.where(
-                        st.session_state.original_missing & ~plot_df[target_col].isna(),
-                        plot_df[target_col],
-                        np.nan
-                    )
+                    # Сохраняем информацию о первоначальных пропусках
+                    if st.session_state.original_missing is None:
+                        st.session_state.original_missing = plot_df[target_col].isna().copy()
                     
-                    # Создаем основной график
+                    # Создание графика с подсветкой заполненных пропусков
                     fig = px.line(
                         plot_df,
                         x=date_col,
@@ -135,12 +137,16 @@ def run_step():
                         labels={date_col: "Дата", target_col: "Значение"},
                         line_shape='linear',
                     )
-                    
-                    # Добавляем красные маркеры для заполненных значений
-                    if not plot_df['filled'].isna().all():
+
+                    # Определение заполненных пропусков
+                    filled_mask = st.session_state.original_missing & ~plot_df[target_col].isna()
+                    current_missing = plot_df[target_col].isna()
+
+                    # Добавление маркеров для заполненных значений
+                    if filled_mask.any():
                         fig.add_trace(go.Scatter(
-                            x=plot_df[date_col],
-                            y=plot_df['filled'],
+                            x=plot_df[date_col][filled_mask],
+                            y=plot_df[target_col][filled_mask],
                             mode='markers',
                             marker=dict(
                                 color='red',
@@ -150,135 +156,199 @@ def run_step():
                             name='Заполненные пропуски',
                             hoverinfo='y'
                         ))
-                    
-                    # Настройки легенды
+
                     fig.update_layout(
                         hovermode="x unified",
-                        legend=dict(
-                            orientation="h",
-                            yanchor="bottom",
-                            y=1.02,
-                            xanchor="right",
-                            x=1
-                        ),
-                        margin=dict(l=20, r=20, t=40, b=20),
-                        height=500
+                        height=500,
+                        showlegend=True
                     )
-                    
                     st.plotly_chart(fig, use_container_width=True)
+                    
                 except Exception as e:
                     st.error(f"Ошибка построения графика: {str(e)}")
 
-            # Общие элементы управления
-            total_missing = st.session_state.filtered_df[st.session_state.target_col].isnull().sum()
-            st.markdown(f"**Текущие пропуски:** `{total_missing}`")
+            # Блок управления временными метками
+            st.write("### 🕒 Управление временными метками")
             
-            # Кнопка отмены
-            if st.session_state.preprocessing_history:
-                if st.button("⏪ Сбросить все изменения"):
-                    st.session_state.filtered_df = st.session_state.original_filtered_df.copy()
-                    st.session_state.preprocessing_history = [st.session_state.original_filtered_df.copy()]
-                    st.rerun()
-
-            # Методы обработки
-            st.write("### 🧩 Методы обработки пропусков")
-            target_column = st.session_state.target_col
-            
-            def apply_method(method_func):
-                """Универсальный обработчик методов"""
-                try:
-                    # Сброс к исходному состоянию
-                    current_df = st.session_state.original_filtered_df.copy()
-                    
-                    # Применение метода
-                    processed = method_func(current_df[target_column])
-                    
-                    # Обновление состояния
-                    st.session_state.filtered_df = current_df
-                    st.session_state.filtered_df[target_column] = processed
-                    st.session_state.preprocessing_history = [st.session_state.original_filtered_df.copy()]
-                    st.rerun()
-                    
-                except Exception as e:
-                    st.error(f"Ошибка: {str(e)}")
-
-            # Интерполяция
-            with st.expander("📈 Методы интерполяции"):
-                method = st.selectbox("Тип интерполяции", 
-                    options=['linear', 'time', 'spline', 'nearest'],
-                    format_func=lambda x: {
-                        'linear': 'Линейная',
-                        'time': 'Временная',
-                        'spline': 'Сплайновая',
-                        'nearest': 'Ближайшая'
-                    }[x])
-                
-                if st.button("Применить интерполяцию"):
-                    def interpolate(series):
-                        return series.interpolate(method=method, order=3 if method == 'spline' else None)
-                    
-                    apply_method(interpolate)
-
-            # Статистические методы
-            with st.expander("📊 Статистические методы"):
-                stat_method = st.radio("Метод заполнения",
-                    options=['mean', 'median', 'ffill', 'bfill', 'zero'],
-                    format_func=lambda x: {
-                        'mean': 'Среднее значение',
-                        'median': 'Медиана',
-                        'ffill': 'Последнее известное',
-                        'bfill': 'Следующее известное',
-                        'zero': 'Нулевое значение'
-                    }[x])
-                
-                if st.button("Применить выбранный метод"):
-                    def fill_na(series):
-                        if stat_method in ['mean', 'median']:
-                            return series.fillna(series.__getattribute__(stat_method)())
-                        elif stat_method == 'zero':
-                            return series.fillna(0)
-                        return series.fillna(method=stat_method)
-                    
-                    apply_method(fill_na)
-
-            #TODO: Машинное обучение
-            with st.expander("🤖 Прогнозирование (SARIMAX)"):
-                st.markdown("**Параметры модели**")
-                cols = st.columns(3)
-                with cols[0]:
-                    use_seasonality = st.checkbox(
-                        "Использовать сезонность",
-                        value=hasattr(st.session_state, 'seasonality_type')
+            with st.expander("⚙️ Обработка дубликатов временных меток", expanded=True):
+                if st.session_state.filtered_df[st.session_state.date_col].duplicated().any():
+                    st.warning("Обнаружены дубликаты дат!")
+                    agg_strategy = st.radio(
+                        "Стратегия объединения:",
+                        options=['mean', 'last', 'first', 'sum', 'max', 'min'],
+                        format_func=lambda x: {
+                            'mean': 'Среднее значение',
+                            'last': 'Последнее значение', 
+                            'first': 'Первое значение',
+                            'sum': 'Сумма значений',
+                            'max': 'Максимальное значение',
+                            'min': 'Минимальное значение'
+                        }[x],
+                        horizontal=True
                     )
-                with cols[1]:
-                    max_order = st.number_input("Макс. порядок", 1, 5, 3)
-                with cols[2]:
-                    max_iter = st.number_input("Макс. итераций", 50, 200, 100)
+                    
+                    if st.button("Устранить дубликаты"):
+                        dedup_df = st.session_state.filtered_df.groupby(
+                            st.session_state.date_col, 
+                            as_index=False
+                        ).agg({
+                            st.session_state.target_col: agg_strategy
+                        })
+                        
+                        keep_cols = [st.session_state.date_col, st.session_state.target_col]
+                        st.session_state.filtered_df = dedup_df[keep_cols]
+                        st.rerun()
+                else:
+                    st.info("Дубликаты временных меток не обнаружены")
+
+            with st.expander("🔄 Восстановление временного ряда"):
+                try:
+                    # Конвертируем даты в обоих DataFrame
+                    st.session_state.filtered_df[st.session_state.date_col] = pd.to_datetime(
+                        st.session_state.filtered_df[st.session_state.date_col]
+                    )
+                    
+                    dates = st.session_state.filtered_df[st.session_state.date_col]
+                    full_range = pd.date_range(
+                        start=dates.min(), 
+                        end=dates.max(), 
+                        freq=st.session_state.freq
+                    )
+                    missing_dates = full_range.difference(dates)
+                    
+                    if len(missing_dates) > 0:
+                        st.markdown(f"**Обнаружено пропущенных дат:** {len(missing_dates)}")                
+                        if st.button("Добавить недостающие даты"):
+                            # Создаем DataFrame с правильным типом даты
+                            new_index_df = pd.DataFrame({
+                                st.session_state.date_col: pd.to_datetime(full_range)
+                            })
+
+                            # Конвертируем даты в исходном DataFrame
+                            filtered_df = st.session_state.filtered_df.copy()
+                            filtered_df[st.session_state.date_col] = pd.to_datetime(
+                                filtered_df[st.session_state.date_col]
+                            )
+
+                            # Выполняем объединение
+                            merged_df = pd.merge(
+                                new_index_df,
+                                filtered_df,
+                                on=st.session_state.date_col,
+                                how='left'
+                            )
+
+                            # Восстанавливаем порядок колонок
+                            st.session_state.filtered_df = merged_df[filtered_df.columns.tolist()]
+                            st.rerun()
+                    else:
+                        st.info("Пропущенные временные метки не обнаружены")
+                        
+                except Exception as e:
+                    st.error(f"Ошибка обработки временного ряда: {str(e)}")
+
+            # Обновленный блок обработки пропусков значений
+            st.write("### 🧩 Методы обработки пропусков значений")
+            
+            if st.session_state.filtered_df[st.session_state.target_col].isna().sum() > 0:
+                current_missing = st.session_state.filtered_df[st.session_state.target_col].isna()
+                st.markdown(f"**Текущие пропуски:** `{current_missing.sum()}`")
                 
-                if st.button("Прогнозировать пропуски с SARIMAX"):
-                    def sarimax_fill(series):
-                        # Определение параметров сезонности
-                        seasonal = False
-                        m = 1
-                        if use_seasonality and hasattr(st.session_state, 'seasonal_period'):
-                            seasonal = True
-                            m = st.session_state.seasonal_period
+                def apply_fill_method(method):
+                    try:
+                        filled = st.session_state.filtered_df.copy()
+                        target_col = st.session_state.target_col
                         
-                        # Построение модели
-                        model = auto_arima(
-                            series.dropna(),
-                            seasonal=seasonal,
-                            m=m,
-                            max_order=max_order,
-                            max_iter=max_iter,
-                            suppress_warnings=True,
-                            trace=True
-                        )
+                        if method == 'time':
+                            # Убеждаемся, что индекс DatetimeIndex
+                            temp_df = filled.set_index(st.session_state.date_col)
+                            temp_df[target_col] = temp_df[target_col].interpolate(method='time')
+                            filled = temp_df.reset_index()
+                        elif method == 'linear':
+                            filled[target_col] = filled[target_col].interpolate(method='linear')
+                        elif method in ['ffill', 'bfill']:
+                            filled[target_col] = filled[target_col].fillna(method=method)
+                        elif method == 'mean':
+                            filled[target_col] = filled[target_col].fillna(filled[target_col].mean())
+                        elif method == 'zero':
+                            filled[target_col] = filled[target_col].fillna(0)
                         
-                        # Прогнозирование всех значений
-                        pred = model.predict_in_sample()
-                        return pd.Series(pred, index=series.index)
-                    apply_method(sarimax_fill)
+                        st.session_state.filtered_df = filled
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Ошибка заполнения: {str(e)}")
+
+                cols = st.columns(2)
+                with cols[0]:
+                    st.markdown("**Автоматические методы:**")
+                    auto_method = st.selectbox(
+                        "Выберите метод:",
+                        options=['linear', 'time', 'ffill', 'bfill', 'mean'],
+                        format_func=lambda x: {
+                            'linear': 'Линейная интерполяция',
+                            'time': 'Временная интерполяция',
+                            'ffill': 'Заполнение предыдущим',
+                            'bfill': 'Заполнение следующим',
+                            'mean': 'Среднее значение'
+                        }[x]
+                    )
+                    if st.button("Применить автоматическое заполнение"):
+                        apply_fill_method(auto_method)
+
+                with cols[1]:
+                    st.markdown("**Ручное заполнение:**")
+                    manual_value = st.number_input("Значение для заполнения", value=0.0)
+                    if st.button("Заполнить выбранным значением"):
+                        apply_fill_method('zero')
+                        
+            else:
+                st.success("Пропуски в значениях отсутствуют")
+
+            # Улучшенная кнопка сброса
+            if st.button("⏪ Сбросить все изменения к исходным данным"):
+                st.session_state.filtered_df = st.session_state.original_filtered_df.copy()
+                st.session_state.original_missing = st.session_state.original_filtered_df[st.session_state.target_col].isna().copy()
+                st.rerun()
+
+            # #TODO: Машинное обучение
+            # with st.expander("🤖 Прогнозирование (SARIMAX)"):
+            #     st.markdown("**Параметры модели**")
+            #     cols = st.columns(3)
+            #     with cols[0]:
+            #         use_seasonality = st.checkbox(
+            #             "Использовать сезонность",
+            #             value=hasattr(st.session_state, 'seasonality_type')
+            #         )
+            #     with cols[1]:
+            #         max_order = st.number_input("Макс. порядок", 1, 5, 3)
+            #     with cols[2]:
+            #         max_iter = st.number_input("Макс. итераций", 50, 200, 100)
+                
+            #     if st.button("Прогнозировать пропуски с SARIMAX"):
+            #         def sarimax_fill(series):
+            #             # Определение параметров сезонности
+            #             seasonal = False
+            #             m = 1
+            #             if use_seasonality and hasattr(st.session_state, 'seasonal_period'):
+            #                 seasonal = True
+            #                 m = st.session_state.seasonal_period
+                        
+            #             # Построение модели
+            #             model = auto_arima(
+            #                 series.dropna(),
+            #                 seasonal=seasonal,
+            #                 m=m,
+            #                 max_order=max_order,
+            #                 max_iter=max_iter,
+            #                 suppress_warnings=True,
+            #                 trace=True
+            #             )
+                        
+            #             # Прогнозирование всех значений
+            #             pred = model.predict_in_sample()
+            #             return pd.Series(pred, index=series.index)
+            #         apply_method(sarimax_fill)
         with tab3:
             st.write("### 📉 STL-Декомпозиция временного ряда")
             

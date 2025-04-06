@@ -95,6 +95,7 @@ def show_select_cols_tab():
                     plot_df[st.session_state.date_col] = pd.to_datetime(
                         plot_df[st.session_state.date_col]
                        , dayfirst=True
+                       , format='mixed'
                     )
                     
                     # Сортируем по дате

@@ -38,6 +38,10 @@ def navigation_buttons():
                         st.session_state.filtered_df[st.session_state.date_col] = pd.to_datetime(
                             st.session_state.filtered_df[st.session_state.date_col]
                         )
+
+                        if st.session_state.date_col not in st.session_state.filtered_df.columns:
+                            st.session_state.filtered_df = st.session_state.filtered_df.reset_index()
+
                         st.session_state.step += 1
                         st.rerun()
                     except Exception as e:
@@ -68,7 +72,9 @@ def init_session_state():
         'target_col': None,
         'current_file': None,
         'preprocessing_history':[],
-        'original_missing': None
+        'original_missing': None,
+        'seasonal_period': None,
+        'filled_df': None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:

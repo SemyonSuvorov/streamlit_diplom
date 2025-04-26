@@ -10,12 +10,12 @@ import numpy as np
 def run_step():
     st.subheader("Шаг 2. Предобработка данных")
     
-    if 'initial_preprocessing_state' not in st.session_state:
-        st.session_state.initial_preprocessing_state = st.session_state.filtered_df.copy()
-    
     if st.session_state.filtered_df is None:
         st.warning("Пожалуйста, загрузите данные на первом шаге")
         return
+        
+    if 'initial_preprocessing_state' not in st.session_state or st.session_state.initial_preprocessing_state is None:
+        st.session_state.initial_preprocessing_state = st.session_state.filtered_df.copy()
 
     tab1, tab2, tab3 = st.tabs(["Описание данных", "Обработка пропусков", "Декомпозиция временного ряда"])
     
@@ -175,8 +175,12 @@ def run_step():
                 st.error(f"Ошибка обработки временного ряда: {str(e)}")
 
         st.write("### 🧩 Методы обработки пропусков значений")
-        if st.session_state.filtered_df[st.session_state.target_col].isna().sum() > 0:
+        missing_count = st.session_state.filtered_df[st.session_state.target_col].isna().sum()
+        if missing_count > 0:
+            st.warning(f"Обнаружено {missing_count} пропущенных значений в целевой переменной")
             def apply_fill_method(method):
+                if 'initial_preprocessing_state' not in st.session_state:
+                    st.session_state.initial_preprocessing_state = st.session_state.filtered_df.copy()
                 filled = st.session_state.filtered_df.copy()
                 target_col = st.session_state.target_col
                 if method == 'time':

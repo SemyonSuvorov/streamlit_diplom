@@ -94,6 +94,7 @@ def sidebar_navigation():
         current_step = st.session_state.step
         allowed_steps = [1]
         
+        # Проверка готовности данных для активации шагов
         if st.session_state.raw_df is not None and st.session_state.date_col and st.session_state.target_col:
             allowed_steps.extend([2, 3])
         
@@ -109,6 +110,9 @@ def sidebar_navigation():
                 use_container_width=True
             )
             if btn and not disabled and step_num != current_step:
+                # Принудительная синхронизация состояний перед сменой шага
+                if step_num == 1:
+                    st.session_state.processed_df.columns = st.session_state.current_columns
                 st.session_state.step = step_num
                 st.rerun()
 

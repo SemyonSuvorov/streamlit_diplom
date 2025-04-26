@@ -37,36 +37,42 @@ def show_data_preview():
 def show_select_cols_tab():
     st.subheader("📌 Выбор переменных")
     if st.session_state.processed_df is not None:
+        # Валидация текущих значений
+        current_columns = st.session_state.current_columns
+        
+        # Проверка и коррекция date_col
+        if st.session_state.date_col not in current_columns:
+            st.session_state.date_col = current_columns[0] if current_columns else None
+        
+        # Проверка и коррекция target_col
+        available_targets = [c for c in current_columns if c != st.session_state.date_col]
+        if st.session_state.target_col not in available_targets:
+            st.session_state.target_col = available_targets[0] if available_targets else None
+
         col1, col2 = st.columns([1, 3])
         with col1:
-            current_date_col = st.session_state.date_col or st.session_state.current_columns[0]
-            current_target_col = st.session_state.target_col or st.session_state.current_columns[-1]
-
             new_date_col = st.selectbox(
                 "Выберите столбец с датой",
-                options=st.session_state.current_columns,
-                index=st.session_state.current_columns.index(current_date_col),
+                options=current_columns,
+                index=current_columns.index(st.session_state.date_col),
                 key="date_col_selector"
             )
             
+            available_targets = [c for c in current_columns if c != new_date_col]
             new_target_col = st.selectbox(
                 "Выберите столбец с зависимой переменной",
-                options=[c for c in st.session_state.current_columns if c != new_date_col],
-                index=0,
+                options=available_targets,
+                index=available_targets.index(st.session_state.target_col) if st.session_state.target_col in available_targets else 0,
                 key="target_col_selector"
             )
             
+            # Обновляем значения только при изменении
             if new_date_col != st.session_state.date_col:
                 st.session_state.date_col = new_date_col
-                st.session_state.original_missing = None
-                if new_target_col == new_date_col:
-                    st.session_state.target_col = None
-                    st.session_state.original_missing = st.session_state.processed_df[new_target_col].isnull().copy()
+                st.session_state.target_col = None  # Сбрасываем целевую при смене даты
             
             if new_target_col != st.session_state.target_col:
                 st.session_state.target_col = new_target_col
-                st.session_state.original_missing = st.session_state.processed_df[new_target_col].isnull().copy()
-                
         with col2:
             if st.session_state.date_col and st.session_state.target_col:
                 try:
@@ -131,11 +137,18 @@ def manual_rename_interface():
         if error_messages:
             st.error("\n".join(error_messages))
         else:
+            # Обновляем названия для date_col и target_col
+            rename_mapping = dict(zip(st.session_state.original_columns, new_columns))
+            if st.session_state.date_col in rename_mapping:
+                st.session_state.date_col = rename_mapping[st.session_state.date_col]
+            if st.session_state.target_col in rename_mapping:
+                st.session_state.target_col = rename_mapping[st.session_state.target_col]
+            
             st.session_state.current_columns = new_columns
             st.session_state.processed_df.columns = new_columns
             st.success("✅ Изменения успешно применены!")
             st.rerun()
-
+            
     if reset_btn:
         st.session_state.temp_columns = st.session_state.original_columns.copy()
         st.session_state.current_columns = st.session_state.original_columns.copy()

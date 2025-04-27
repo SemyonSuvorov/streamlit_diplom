@@ -12,8 +12,15 @@ def load_data(uploaded_file):
     else:
         df = pd.read_excel(uploaded_file)
     
-    if (state.get('current_file') is None or 
-        uploaded_file.file_id != state.get('current_file').file_id):
+    # Compare files based on their content hash instead of file_id
+    current_file = state.get('current_file')
+    is_new_file = (
+        current_file is None or 
+        (isinstance(current_file, dict) and current_file.get('name') != uploaded_file.name) or
+        (not isinstance(current_file, dict) and current_file.name != uploaded_file.name)
+    )
+    
+    if is_new_file:
         date_col = None
         target_col = None
     else:
@@ -59,15 +66,20 @@ def show_select_cols_tab():
             new_date_col = st.selectbox(
                 "Выберите столбец с датой",
                 options=current_columns,
-                index=current_columns.index(state.get('date_col')),
+                index=current_columns.index(state.get('date_col')) if state.get('date_col') in current_columns else 0,
                 key="date_col_selector"
             )
             
             available_targets = [c for c in current_columns if c != new_date_col]
+            current_target = state.get('target_col')
+            target_index = 0
+            if current_target in available_targets:
+                target_index = available_targets.index(current_target)
+            
             new_target_col = st.selectbox(
                 "Выберите столбец с зависимой переменной",
                 options=available_targets,
-                index=available_targets.index(state.get('target_col')) if state.get('target_col') in available_targets else 0,
+                index=target_index,
                 key="target_col_selector"
             )
             
@@ -114,13 +126,16 @@ def manual_rename_interface():
         with row_cols[0]:
             st.code(orig_col)
         with row_cols[1]:
+            # Get the current value from temp_columns
+            current_value = state.get('temp_columns')[i]
+            # Create the text input without setting value directly
             new_name = st.text_input(
                 label=f"Редактирование {orig_col}",
-                value=state.get('temp_columns')[i],
                 key=f"col_rename_{i}",
                 label_visibility="collapsed"
             )
-            temp_names.append(new_name.strip())
+            # If the input is empty, use the current value
+            temp_names.append(new_name.strip() if new_name.strip() else current_value)
     
     state.set('temp_columns', temp_names)
 
@@ -164,27 +179,43 @@ def run_step():
     """Запуск шага загрузки данных"""
     uploaded_file = st.file_uploader(
         "Загрузите файл данных (CSV/Excel)", 
-        type=["csv", "xlsx"],
-        key="file_uploader"
-    ) or state.get('current_file') 
-    
-    if uploaded_file:
-        try:
-            if (state.get('raw_df') is None or 
-                uploaded_file.file_id != state.get('current_file').file_id):
-                load_data(uploaded_file)
-                st.rerun()
-            
-            tab1, tab2, tab3 = st.tabs(["Данные", "Переименование", "Выбор переменных"])
-            
-            with tab1:
-                show_data_preview()
-            with tab2:
-                manual_rename_interface()
-            with tab3:
-                show_select_cols_tab()
+        type=["csv", "xlsx"]
+    )
 
-        except Exception as e:
-            st.error(f"🚨 Ошибка обработки файла: {str(e)}")
-    else:
-        st.info("👆 Пожалуйста, загрузите файл для начала работы")
+    # Отладочная информация
+    if uploaded_file:
+        st.write(f"Загружен файл: {uploaded_file.name}")
+
+    tab1, tab2, tab3 = st.tabs(["Данные", "Переименование", "Выбор переменных"])
+    
+    with tab1:
+        if uploaded_file:
+            try:
+                # Проверяем, нужно ли загружать новый файл
+                current_file = state.get('current_file')
+                should_load = (
+                    state.get('raw_df') is None or 
+                    current_file is None or
+                    (isinstance(current_file, dict) and current_file.get('name') != uploaded_file.name) or
+                    (not isinstance(current_file, dict) and current_file.name != uploaded_file.name)
+                )
+                
+                if should_load:
+                    load_data(uploaded_file)
+                    st.rerun()
+                show_data_preview()
+            except Exception as e:
+                st.error(f"🚨 Ошибка обработки файла: {str(e)}")
+                st.write("Детали ошибки:", str(e))
+        else:
+            st.info("👆 Загрузите файл для предпросмотра данных")
+    with tab2:
+        if uploaded_file:
+            manual_rename_interface()
+        else:
+            st.info("✏️ Загрузите файл для редактирования названий столбцов")
+    with tab3:
+        if uploaded_file:
+            show_select_cols_tab()
+        else:
+            st.info("📌 Загрузите файл для выбора переменных")

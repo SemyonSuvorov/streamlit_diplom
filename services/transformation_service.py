@@ -49,21 +49,21 @@ class TransformationService:
                 random_state=42
             )
             preds = model.fit_predict(data.values.reshape(-1, 1))
-            outliers_mask = preds == -1
+            outliers_mask = pd.Series(preds == -1, index=data.index)
         elif method == 'DBSCAN':
             model = DBSCAN(
                 eps=kwargs.get('eps', 0.5),
                 min_samples=kwargs.get('min_samples', 5)
             )
             clusters = model.fit_predict(data.values.reshape(-1, 1))
-            outliers_mask = clusters == -1
+            outliers_mask = pd.Series(clusters == -1, index=data.index)
         elif method == 'LOF':
             lof = LocalOutlierFactor(
                 n_neighbors=kwargs.get('n_neighbors', 20),
                 contamination=kwargs.get('contamination', 0.1)
             )
             preds = lof.fit_predict(data.values.reshape(-1, 1))
-            outliers_mask = preds == -1
+            outliers_mask = pd.Series(preds == -1, index=data.index)
         elif method == 'Robust Z-score':
             median = data.median()
             mad = median_abs_deviation(data, scale='normal')

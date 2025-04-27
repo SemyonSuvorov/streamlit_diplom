@@ -60,10 +60,38 @@ def navigation_buttons():
                            else "Загрузите данные и выберите столбцы")
                 st.button("Далее →", disabled=True, help=help_msg, use_container_width=True)
         
-        elif state.get('step', 1) in [2, 3]:
+        elif state.get('step', 1) == 2:
+            # Проверяем наличие пропущенных значений в целевой переменной и дате
+            if state.get('filtered_df') is not None:
+                has_missing_target = state.get('filtered_df')[state.get('target_col')].isnull().any()
+                has_missing_date = state.get('filtered_df')[state.get('date_col')].isnull().any()
+                
+                # Проверяем наличие пропусков во временных метках
+                df = state.get('filtered_df').copy()
+                df = df.sort_values(state.get('date_col'))
+                date_diff = df[state.get('date_col')].diff()
+                has_time_gaps = (date_diff > pd.Timedelta(days=1)).any()
+                
+                if has_missing_target or has_missing_date:
+                    help_msg = "Устраните пропущенные значения в целевой переменной и дате перед переходом к следующему шагу"
+                    st.button("Далее →", disabled=True, help=help_msg, use_container_width=True)
+                elif has_time_gaps:
+                    help_msg = "Обнаружены пропуски во временных метках. Устраните пропуски в датах перед переходом к следующему шагу"
+                    st.button("Далее →", disabled=True, help=help_msg, use_container_width=True)
+                else:
+                    if st.button("Далее →", type="primary", use_container_width=True):
+                        state.set('step', state.get('step', 1) + 1)
+                        st.rerun()
+            else:
+                st.button("Далее →", disabled=True, help="Данные не загружены", use_container_width=True)
+        
+        elif state.get('step', 1) == 3:
             if st.button("Далее →", type="primary", use_container_width=True):
                 state.set('step', state.get('step', 1) + 1)
                 st.rerun()
+        
+        elif state.get('step', 1) == 4:
+            st.button("Далее →", disabled=True, help="Это последний шаг", use_container_width=True)
 
 def sidebar_navigation():
     """Навигация в сайдбаре"""
@@ -72,26 +100,36 @@ def sidebar_navigation():
         steps = {
             1: "Загрузка данных",
             2: "Предобработка данных",
-            3: "Преобразование данных и выбросы"
+            3: "Преобразование данных и выбросы",
+            4: "Прогнозирование"
         }
-        current_step = state.get('step', 1)  # Default to 1 if None
+        current_step = state.get('step', 1)
         allowed_steps = [1]
         
         # Проверка готовности данных для активации шагов
         if state.get('raw_df') is not None and state.get('date_col') and state.get('target_col'):
-            allowed_steps.extend([2, 3])
+            allowed_steps.extend([2, 3, 4])
+            
+        # Создаем контейнер для кнопок
+        button_container = st.container()
         
         for step_num, step_name in steps.items():
             status = "✅" if step_num < current_step else "➖"
             if step_num == current_step:
                 status = "📍"
             disabled = step_num not in allowed_steps
-            btn = st.button(
-                f"{status} {step_name}",
-                key=f"sidebar_step_{step_num}",
-                disabled=disabled,
-                use_container_width=True
-            )
-            if btn and not disabled and step_num != current_step:
-                state.set('step', step_num)
-                st.rerun() 
+            
+            with button_container:
+                # Создаем кнопку без сохранения состояния
+                if st.button(
+                    f"{status} {step_name}",
+                    disabled=disabled,
+                    use_container_width=True
+                ):
+                    if not disabled and step_num != current_step:
+                        state.set('step', step_num)
+                        st.rerun()
+                        
+        # UX: Подсказка, если шаги неактивны
+        if state.get('raw_df') is None:
+            st.info("Загрузите данные, чтобы перейти к следующим шагам") 

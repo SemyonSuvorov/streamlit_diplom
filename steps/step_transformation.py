@@ -215,8 +215,9 @@ def show_features_tab():
     """)
     
     with st.expander("➕ Добавить новые признаки", expanded=True):
-        feature_type = st.selectbox(
-            "Тип признака:",
+        # Мультиселект для выбора нескольких типов признаков
+        feature_types = st.multiselect(
+            "Типы признаков:",
             [
                 "Скользящее среднее", 
                 "Скользящее стандартное отклонение",
@@ -229,96 +230,136 @@ def show_features_tab():
                 "День года",
                 "Неделя года"
             ],
-            index=None,
-            placeholder="Выберите тип признака...",
-            key="feature_type"
+            placeholder="Выберите типы признаков...",
+            key="feature_types"
         )
         
-        if feature_type:
+        if feature_types:
             try:
                 ts = state.get('filtered_df').set_index(state.get('date_col'))[state.get('target_col')]
-                new_feature = None
-                params = {}
+                features_to_add = {}
                 
-                if feature_type == "Скользящее среднее":
-                    window = st.number_input("Размер окна", 2, 180, 7,
-                                           help="Количество точек для усреднения",
-                                           key="rolling_window")
-                    min_periods = st.number_input("Минимальные периоды", 1, window, 1,
-                                                key="min_periods")
-                    new_feature = ts.rolling(window=window, min_periods=min_periods).mean()
-                    params = {'window': window, 'min_periods': min_periods}
+                for feature_type in feature_types:
+                    params = {}
                     
-                elif feature_type == "Скользящее стандартное отклонение":
-                    window = st.number_input("Размер окна", 2, 180, 7,
-                                           key="std_window")
-                    min_periods = st.number_input("Минимальные периоды", 1, window, 2,
-                                                key="std_min_periods")
-                    new_feature = ts.rolling(window=window, min_periods=min_periods).std()
-                    params = {'window': window, 'min_periods': min_periods}
-                    
-                elif feature_type == "Разница":
-                    diff_order = st.number_input("Порядок разности", 1, 5, 1,
-                                               key="diff_order_input")
-                    new_feature = ts.diff(diff_order)
-                    params = {'order': diff_order}
-                    
-                elif feature_type == "Процентное изменение":
-                    periods = st.number_input("Периоды", 1, 30, 1,
-                                            key="pct_change_periods")
-                    new_feature = ts.pct_change(periods)
-                    params = {'periods': periods}
-
-                elif feature_type in ["Месяц", "Квартал", "День недели", "День месяца", "День года", "Неделя года"]:
-                    try:
-                        # Проверяем наличие столбца с датой
-                        date_col = state.get('date_col')
-                        if date_col not in state.get('filtered_df').columns:
-                            st.error(f"Столбец с датой '{date_col}' не найден в данных")
-                            return
-                            
-                        # Создаем копию датафрейма с переименованным столбцом даты
-                        temp_df = state.get('filtered_df').copy()
-                        
-                        # Преобразуем даты в datetime
-                        temp_df[date_col] = pd.to_datetime(temp_df[date_col])
-                        
-                        # Переименовываем столбец
-                        temp_df = temp_df.rename(columns={date_col: 'date'})
-                        
-                        # Проверяем преобразование
-                        new_feature = TransformationService.create_features(
-                            temp_df,
-                            state.get('target_col'),
-                            feature_type,
-                            date_col='date'
+                    if feature_type == "Скользящее среднее":
+                        window = st.number_input(
+                            "Размер окна для скользящего среднего",
+                            2, 180, 7,
+                            help="Количество точек для усреднения",
+                            key="rolling_window"
                         )
-                        params = {'component': feature_type.lower().replace(' ', '_')}
-                    except Exception as e:
-                        st.error(f"Ошибка создания признака: {str(e)}")
-                        st.error(f"Доступные столбцы: {state.get('filtered_df').columns.tolist()}")
-                        st.error(f"Используемый столбец даты: {state.get('date_col')}")
-                        st.error(f"Тип данных в столбце даты: {type(state.get('filtered_df')[state.get('date_col')].iloc[0])}")
-                        return
+                        min_periods = st.number_input(
+                            "Минимальные периоды для скользящего среднего",
+                            1, window, 1,
+                            key="min_periods"
+                        )
+                        features_to_add[f"rolling_mean_{window}"] = ts.rolling(window=window, min_periods=min_periods).mean()
+                        
+                    elif feature_type == "Скользящее стандартное отклонение":
+                        window = st.number_input(
+                            "Размер окна для стандартного отклонения",
+                            2, 180, 7,
+                            key="std_window"
+                        )
+                        min_periods = st.number_input(
+                            "Минимальные периоды для стандартного отклонения",
+                            1, window, 2,
+                            key="std_min_periods"
+                        )
+                        features_to_add[f"rolling_std_{window}"] = ts.rolling(window=window, min_periods=min_periods).std()
+                        
+                    elif feature_type == "Разница":
+                        diff_order = st.number_input(
+                            "Порядок разности",
+                            1, 5, 1,
+                            key="diff_order_input"
+                        )
+                        features_to_add[f"diff_{diff_order}"] = ts.diff(diff_order)
+                        
+                    elif feature_type == "Процентное изменение":
+                        periods = st.number_input(
+                            "Периоды для процентного изменения",
+                            1, 30, 1,
+                            key="pct_change_periods"
+                        )
+                        features_to_add[f"pct_change_{periods}"] = ts.pct_change(periods)
 
-                if new_feature is not None:
-                    feature_name = f"{feature_type.lower().replace(' ', '_')}"
-                    if params:
-                        feature_name += "_" + "_".join(map(str, params.values()))
-                    feature_name = feature_name.replace(" ", "_")
+                    elif feature_type in ["Месяц", "Квартал", "День недели", "День месяца", "День года", "Неделя года"]:
+                        try:
+                            # Проверяем наличие столбца с датой
+                            date_col = state.get('date_col')
+                            if date_col not in state.get('filtered_df').columns:
+                                st.error(f"Столбец с датой '{date_col}' не найден в данных")
+                                return
+                                
+                            # Создаем копию датафрейма с переименованным столбцом даты
+                            temp_df = state.get('filtered_df').copy()
+                            
+                            # Преобразуем даты в datetime
+                            temp_df[date_col] = pd.to_datetime(temp_df[date_col])
+                            
+                            # Переименовываем столбец
+                            temp_df = temp_df.rename(columns={date_col: 'date'})
+                            
+                            # Создаем признак
+                            feature_name = feature_type.lower().replace(' ', '_')
+                            features_to_add[feature_name] = TransformationService.create_features(
+                                temp_df,
+                                state.get('target_col'),
+                                feature_type,
+                                date_col='date'
+                            )
+                        except Exception as e:
+                            st.error(f"Ошибка создания признака {feature_type}: {str(e)}")
+                            continue
+
+                if st.button("Добавить выбранные признаки", key="add_features"):
+                    if state.get('features_initial') is None:
+                        state.set('features_initial', state.get('filtered_df').copy())
                     
-                    if st.button("Добавить признак", key="add_feature"):
-                        if state.get('features_initial') is None:
-                            state.set('features_initial', state.get('filtered_df').copy())
-                        
-                        df = state.get('filtered_df').copy()
-                        df[feature_name] = new_feature.values
-                        state.set('filtered_df', df)
-                        st.success(f"Признак {feature_name} успешно добавлен!")
-                        st.rerun()
-                        
+                    df = state.get('filtered_df').copy()
+                    for feature_name, feature_values in features_to_add.items():
+                        df[feature_name] = feature_values.values
+                    
+                    state.set('filtered_df', df)
+                    st.success(f"Признаки успешно добавлены!")
+                    st.rerun()
+                    
             except Exception as e:
-                st.error(f"Ошибка создания признака: {str(e)}")
+                st.error(f"Ошибка создания признаков: {str(e)}")
+
+    st.markdown("---")
+    
+    # Добавляем секцию для удаления признаков
+    with st.expander("🗑️ Удалить признаки", expanded=True):
+        if len(state.get('filtered_df').columns) > 2:
+            # Получаем список всех признаков (исключая дату и целевую переменную)
+            available_features = [col for col in state.get('filtered_df').columns 
+                               if col not in [state.get('date_col'), state.get('target_col')]]
+            
+            if available_features:
+                features_to_delete = st.multiselect(
+                    "Выберите признаки для удаления:",
+                    available_features,
+                    placeholder="Выберите признаки...",
+                    key="features_to_delete"
+                )
+                
+                if features_to_delete:
+                    if st.button("Удалить выбранные признаки", type="primary", key="delete_features"):
+                        try:
+                            df = state.get('filtered_df').copy()
+                            df = df.drop(columns=features_to_delete)
+                            state.set('filtered_df', df)
+                            st.success(f"Признаки успешно удалены!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Ошибка удаления признаков: {str(e)}")
+            else:
+                st.info("Нет доступных признаков для удаления")
+        else:
+            st.info("Нет доступных признаков для удаления")
 
     st.markdown("---")
     st.markdown("### Визуализация новых признаков")
@@ -423,14 +464,14 @@ def create_statistics_table(before_stats, after_stats):
 
 def show_outliers_tab():
     """Отображение вкладки выбросов и скейлинга"""
-    st.markdown("## Обработка выбросов и масштабирование")
+    st.markdown("## Обработка выбросов")
     
     # Инициализация session_state для статистики
     if 'outlier_stats' not in st.session_state:
         st.session_state.outlier_stats = {}
     
     # Разделение на подтабы
-    analysis_tab, processing_tab, scaling_tab = st.tabs(["Анализ выбросов", "Обработка выбросов", "Масштабирование"])
+    analysis_tab, processing_tab = st.tabs(["Анализ выбросов", "Обработка выбросов"])
     
     with analysis_tab:
         st.markdown("### Анализ выбросов")
@@ -561,8 +602,10 @@ def show_outliers_tab():
                     ))
                     
                     # Добавляем выбросы другим цветом
+                    # Убедимся, что маска и данные имеют одинаковую длину
+                    aligned_mask = pd.Series(outliers_mask, index=data.index)
                     fig.add_trace(go.Histogram(
-                        x=data[outliers_mask],
+                        x=data[aligned_mask],
                         name='Выбросы',
                         nbinsx=50,
                         opacity=0.8,
@@ -803,12 +846,9 @@ def show_outliers_tab():
                 
                 st.plotly_chart(fig, use_container_width=True)
 
-    with scaling_tab:
-        show_scaling_tab()
-
-def show_scaling_tab():
+def show_scaling_tab(key_prefix: str = "main"):
     """Отображение вкладки масштабирования данных"""
-    st.markdown("### Масштабирование данных")
+    st.markdown("## Масштабирование данных")
     
     col1, col2 = st.columns([1, 2])
     
@@ -818,22 +858,22 @@ def show_scaling_tab():
             "Выберите столбцы для масштабирования:",
             numeric_cols,
             default=[state.get('target_col')] if state.get('target_col') in numeric_cols else [],
-            key="scale_cols"
+            key=f"{key_prefix}_scaling_scale_cols"
         )
         
         scale_method = st.selectbox(
             "Метод масштабирования:",
             ["StandardScaler", "MinMaxScaler", "RobustScaler"],
             format_func=lambda x: {
-                "StandardScaler": "StandardScaler",
-                "MinMaxScaler": "MinMaxScaler",
-                "RobustScaler": "RobustScaler"
+                "StandardScaler": "StandardScaler (z-score)",
+                "MinMaxScaler": "MinMaxScaler (0-1)",
+                "RobustScaler": "RobustScaler (медиана/IQR)"
             }[x],
             index=0,
-            key="scale_method"
+            key=f"{key_prefix}_scale_method"
         )
         
-        if st.button("Применить масштабирование", key="apply_scaling"):
+        if st.button("Применить масштабирование", key=f"{key_prefix}_apply_scaling"):
             if scale_cols:
                 try:
                     if state.get('scaling_initial') is None:
@@ -857,75 +897,126 @@ def show_scaling_tab():
                 st.rerun()
 
     with col2:
-        if scale_cols:
+        if scale_cols and state.get('scaling_initial') is not None:
             try:
-                # Создаем таблицу со статистикой до и после масштабирования
-                stats_data = []
-                for col in scale_cols:
-                    if state.get('scaling_initial') is not None:
-                        before_data = state.get('scaling_initial')[col]
-                        after_data = state.get('filtered_df')[col]
-                        
-                        stats_data.append({
-                            'Столбец': col,
-                            'До масштабирования': {
-                                'Среднее': f"{before_data.mean():.2f}",
-                                'Стандартное отклонение': f"{before_data.std():.2f}",
-                                'Минимум': f"{before_data.min():.2f}",
-                                'Максимум': f"{before_data.max():.2f}"
-                            },
-                            'После масштабирования': {
-                                'Среднее': f"{after_data.mean():.2f}",
-                                'Стандартное отклонение': f"{after_data.std():.2f}",
-                                'Минимум': f"{after_data.min():.2f}",
-                                'Максимум': f"{after_data.max():.2f}"
-                            }
-                        })
+                # Создаем вкладки для разных типов визуализации
+                viz_tab1, viz_tab2 = st.tabs(["Распределение", "Временной ряд"])
                 
-                # Отображаем статистику
-                for stat in stats_data:
-                    st.markdown(f"#### {stat['Столбец']}")
-                    col_before, col_after = st.columns(2)
+                for col in scale_cols:
+                    before_data = state.get('scaling_initial')[col]
+                    after_data = state.get('filtered_df')[col]
                     
-                    with col_before:
-                        st.markdown("**До масштабирования:**")
-                        for key, value in stat['До масштабирования'].items():
-                            st.metric(key, value)
+                    with viz_tab1:                        
+                        # Создаем гистограммы распределения
+                        fig = go.Figure()
+                        
+                        # До масштабирования
+                        fig.add_trace(go.Histogram(
+                            x=before_data,
+                            name='До масштабирования',
+                            nbinsx=50,
+                            opacity=0.7,
+                            marker_color='#1f77b4'
+                        ))
+                        
+                        # После масштабирования
+                        fig.add_trace(go.Histogram(
+                            x=after_data,
+                            name='После масштабирования',
+                            nbinsx=50,
+                            opacity=0.7,
+                            marker_color='#ff7f0e'
+                        ))
+                        
+                        fig.update_layout(
+                            title=f"Распределение {col} до и после масштабирования",
+                            xaxis_title="Значение",
+                            yaxis_title="Количество",
+                            barmode='overlay',
+                            height=400,
+                            showlegend=True,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="center",
+                                x=0.5
+                            )
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Создаем таблицу со статистикой
+                        stats_data = {
+                            'Метрика': ['Среднее', 'Стандартное отклонение', 'Минимум', 'Максимум'],
+                            'До масштабирования': [
+                                f"{before_data.mean():.2f}",
+                                f"{before_data.std():.2f}",
+                                f"{before_data.min():.2f}",
+                                f"{before_data.max():.2f}"
+                            ],
+                            'После масштабирования': [
+                                f"{after_data.mean():.2f}",
+                                f"{after_data.std():.2f}",
+                                f"{after_data.min():.2f}",
+                                f"{after_data.max():.2f}"
+                            ],
+                            'Изменение': [
+                                f"{after_data.mean() - before_data.mean():.2f}",
+                                f"{after_data.std() - before_data.std():.2f}",
+                                f"{after_data.min() - before_data.min():.2f}",
+                                f"{after_data.max() - before_data.max():.2f}"
+                            ]
+                        }
+                        
+                        # Создаем DataFrame для отображения
+                        stats_df = pd.DataFrame(stats_data)
+                        
+                        # Отображаем таблицу с условным форматированием
+                        st.dataframe(
+                            stats_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
                     
-                    with col_after:
-                        st.markdown("**После масштабирования:**")
-                        for key, value in stat['После масштабирования'].items():
-                            st.metric(key, value)
-                    
-                    # Визуализация распределения
-                    fig = go.Figure()
-                    
-                    # До масштабирования
-                    fig.add_trace(go.Histogram(
-                        x=state.get('scaling_initial')[stat['Столбец']],
-                        name='До масштабирования',
-                        nbinsx=50,
-                        opacity=0.7
-                    ))
-                    
-                    # После масштабирования
-                    fig.add_trace(go.Histogram(
-                        x=state.get('filtered_df')[stat['Столбец']],
-                        name='После масштабирования',
-                        nbinsx=50,
-                        opacity=0.7
-                    ))
-                    
-                    fig.update_layout(
-                        title=f"Распределение {stat['Столбец']} до и после масштабирования",
-                        xaxis_title="Значение",
-                        yaxis_title="Количество",
-                        barmode='overlay',
-                        height=300
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
+                    with viz_tab2:                        
+                        # Создаем временной ряд
+                        fig = go.Figure()
+                        
+                        # Добавляем исходный ряд
+                        fig.add_trace(go.Scatter(
+                            x=state.get('filtered_df')[state.get('date_col')],
+                            y=before_data,
+                            name='До масштабирования',
+                            line=dict(color='#1f77b4', width=2)
+                        ))
+                        
+                        # Добавляем масштабированный ряд
+                        fig.add_trace(go.Scatter(
+                            x=state.get('filtered_df')[state.get('date_col')],
+                            y=after_data,
+                            name='После масштабирования',
+                            line=dict(color='#ff7f0e', width=2, dash='dot')
+                        ))
+                        
+                        fig.update_layout(
+                            title=f"Временной ряд {col} до и после масштабирования",
+                            xaxis_title="Дата",
+                            yaxis_title="Значение",
+                            height=400,
+                            showlegend=True,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="center",
+                                x=0.5
+                            ),
+                            hovermode="x unified"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                
             except Exception as e:
                 st.error(f"Ошибка визуализации: {str(e)}")
 
@@ -943,8 +1034,8 @@ def run_step():
     tab1, tab2, tab3, tab4 = st.tabs([
         "Стационарность",
         "Признаки", 
-        "Выбросы",
-        "Масштабирование"
+        "Масштабирование",
+        "Выбросы"
     ])
 
     with tab1:
@@ -952,6 +1043,6 @@ def run_step():
     with tab2:
         show_features_tab()
     with tab3:
-        show_outliers_tab()
+        show_scaling_tab(key_prefix="main")
     with tab4:
-        show_scaling_tab()
+        show_outliers_tab()

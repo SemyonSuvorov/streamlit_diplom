@@ -7,6 +7,7 @@ from state.session import state
 from components.navigation import navigation_buttons, sidebar_navigation
 from components.auth import show_auth_form, show_logout_button, is_authenticated
 from steps import step_upload, step_preprocessing, step_transformation, step_forecasting
+from components.forecasting.model_registration import register_models
 import uuid
 
 def init_app():
@@ -17,6 +18,8 @@ def init_app():
         layout=APP_CONFIG['layout'],
         initial_sidebar_state=APP_CONFIG['initial_sidebar_state']
     )
+    # Register models
+    register_models()
 
 def main():
     """Основная функция приложения"""
@@ -35,8 +38,8 @@ def main():
     # Show auth form in sidebar if not authenticated
     with st.sidebar:
         if not is_authenticated():
-            st.subheader("🔐 Аутентификация")
-            show_auth_form()
+            with st.expander("🔐 Аутентификация", expanded=False):
+                show_auth_form()
         else:
             show_logout_button()
     

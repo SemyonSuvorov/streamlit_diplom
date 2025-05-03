@@ -139,4 +139,30 @@ class DataService:
         except:
             pass
         
-        return info 
+        return info
+
+    @staticmethod
+    def clean_percentage_values(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Очистка процентных значений в DataFrame
+        
+        Args:
+            df: DataFrame с данными
+            
+        Returns:
+            pd.DataFrame: DataFrame с очищенными значениями
+        """
+        cleaned_df = df.copy()
+        
+        # Проходим по всем колонкам
+        for col in cleaned_df.columns:
+            # Проверяем, содержит ли колонка строковые значения
+            if cleaned_df[col].dtype == 'object':
+                # Пробуем преобразовать значения в числа, удаляя знак процента
+                try:
+                    cleaned_df[col] = cleaned_df[col].str.replace('%', '').astype(float) / 100
+                except:
+                    # Если не получилось преобразовать, оставляем как есть
+                    continue
+        
+        return cleaned_df 

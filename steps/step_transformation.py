@@ -182,6 +182,7 @@ def show_stationarity_tab():
                         transformed = ts.rolling(params['window']).mean().dropna()
                     
                     state.set('filtered_df', transformed.reset_index())
+                    state.reset('feature_df')
                     # Очищаем кэш тестов стационарности
                     if 'stationarity_tests' in st.session_state:
                         del st.session_state.stationarity_tests
@@ -198,7 +199,6 @@ def show_stationarity_tab():
                     del st.session_state.stationarity_tests
                 st.rerun()
 
-@st.cache_data
 def create_time_features(df, date_col, feature_type):
     """Создание временных характеристик с кэшированием"""
     return TransformationService.create_features(df, date_col, feature_type)
@@ -215,21 +215,44 @@ def show_features_tab():
     """)
     
     with st.expander("➕ Добавить новые признаки", expanded=True):
+        # Получаем уже существующие признаки
+        existing_cols = set(state.get('filtered_df').columns)
+        # Список всех возможных типов признаков (без базовых временных)
+        all_feature_types = [
+            "Скользящее среднее",
+            "Скользящее стандартное отклонение",
+            "Разница",
+            "Процентное изменение",
+            "Квартал",
+            "День месяца",
+            "День года",
+            "Неделя года"
+        ]
+        # Фильтрация типов признаков, которые уже есть в датафрейме
+        filtered_feature_types = []
+        for ft in all_feature_types:
+            if ft == "Скользящее среднее":
+                if any(col.startswith("rolling_mean_") for col in existing_cols):
+                    continue
+            elif ft == "Скользящее стандартное отклонение":
+                if any(col.startswith("rolling_std_") for col in existing_cols):
+                    continue
+            elif ft == "Разница":
+                if any(col.startswith("diff_") for col in existing_cols):
+                    continue
+            elif ft == "Процентное изменение":
+                if any(col.startswith("pct_change_") for col in existing_cols):
+                    continue
+            else:
+                # Календарные признаки
+                feature_name = ft.lower().replace(' ', '_')
+                if feature_name in existing_cols:
+                    continue
+            filtered_feature_types.append(ft)
         # Мультиселект для выбора нескольких типов признаков
         feature_types = st.multiselect(
             "Типы признаков:",
-            [
-                "Скользящее среднее", 
-                "Скользящее стандартное отклонение",
-                "Разница", 
-                "Процентное изменение",
-                "Месяц",
-                "Квартал",
-                "День недели",
-                "День месяца",
-                "День года",
-                "Неделя года"
-            ],
+            filtered_feature_types,
             placeholder="Выберите типы признаков...",
             key="feature_types"
         )
@@ -285,7 +308,7 @@ def show_features_tab():
                         )
                         features_to_add[f"pct_change_{periods}"] = ts.pct_change(periods)
 
-                    elif feature_type in ["Месяц", "Квартал", "День недели", "День месяца", "День года", "Неделя года"]:
+                    elif feature_type in ["Квартал", "День месяца", "День года", "Неделя года"]:
                         try:
                             # Проверяем наличие столбца с датой
                             date_col = state.get('date_col')
@@ -323,6 +346,7 @@ def show_features_tab():
                         df[feature_name] = feature_values.values
                     
                     state.set('filtered_df', df)
+                    state.reset('feature_df')
                     st.success(f"Признаки успешно добавлены!")
                     st.rerun()
                     
@@ -352,6 +376,7 @@ def show_features_tab():
                             df = state.get('filtered_df').copy()
                             df = df.drop(columns=features_to_delete)
                             state.set('filtered_df', df)
+                            state.reset('feature_df')
                             st.success(f"Признаки успешно удалены!")
                             st.rerun()
                         except Exception as e:
@@ -413,6 +438,8 @@ def show_features_tab():
         if st.button("⏪ Отменить все созданные признаки", key="reset_features"):
             state.set('filtered_df', state.get('features_initial').copy())
             state.reset('features_initial')
+            state.set('filtered_df', state.get('stationarity_initial').copy())
+            state.reset('feature_df')
             st.rerun()
 
 @st.cache_data
@@ -791,7 +818,7 @@ def show_outliers_tab():
                     # Сохраняем результаты обработки
                     st.session_state.outlier_stats[selected_column]['processed_stats'] = new_stats
                     state.set('filtered_df', df)
-                    
+                    state.reset('feature_df')
                     st.rerun()
                 except Exception as e:
                     st.error(f"Ошибка обработки: {str(e)}")
@@ -800,6 +827,7 @@ def show_outliers_tab():
                 if st.button("Отменить обработку", type="secondary", key="revert_processing"):
                     state.set('filtered_df', state.get('outliers_initial').copy())
                     state.reset('outliers_initial')
+                    state.reset('feature_df')
                     st.session_state.outlier_stats = {}
                     st.rerun()
         
@@ -817,34 +845,109 @@ def show_outliers_tab():
                     hide_index=True
                 )
                 
-                # Визуализация до и после
-                fig = go.Figure()
+                # Создаем вкладки для разных типов визуализации
+                viz_tab1, viz_tab2 = st.tabs(["Распределение", "Временной ряд"])
                 
-                # До обработки
-                fig.add_trace(go.Histogram(
-                    x=state.get('outliers_initial')[selected_column],
-                    name='До обработки',
-                    nbinsx=50,
-                    opacity=0.7
-                ))
+                with viz_tab1:
+                    # Визуализация до и после
+                    fig = go.Figure()
+                    
+                    # До обработки
+                    fig.add_trace(go.Histogram(
+                        x=state.get('outliers_initial')[selected_column],
+                        name='До обработки',
+                        nbinsx=50,
+                        opacity=0.7,
+                        marker_color='#1f77b4'
+                    ))
+                    
+                    # После обработки
+                    fig.add_trace(go.Histogram(
+                        x=state.get('filtered_df')[selected_column],
+                        name='После обработки',
+                        nbinsx=50,
+                        opacity=0.7,
+                        marker_color='#ff7f0e'
+                    ))
+                    
+                    fig.update_layout(
+                        title=f"Сравнение распределений до и после обработки",
+                        xaxis_title="Значение",
+                        yaxis_title="Количество",
+                        barmode='overlay',
+                        height=400,
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
                 
-                # После обработки
-                fig.add_trace(go.Histogram(
-                    x=state.get('filtered_df')[selected_column],
-                    name='После обработки',
-                    nbinsx=50,
-                    opacity=0.7
-                ))
-                
-                fig.update_layout(
-                    title=f"Сравнение распределений до и после обработки",
-                    xaxis_title="Значение",
-                    yaxis_title="Количество",
-                    barmode='overlay',
-                    height=400
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
+                with viz_tab2:
+                    # Временной ряд до и после обработки
+                    fig = go.Figure()
+                    
+                    # Добавляем исходный ряд
+                    fig.add_trace(go.Scatter(
+                        x=state.get('filtered_df')[state.get('date_col')],
+                        y=state.get('outliers_initial')[selected_column],
+                        name='До обработки',
+                        line=dict(color='#1f77b4', width=2)
+                    ))
+                    
+                    # Добавляем обработанный ряд
+                    fig.add_trace(go.Scatter(
+                        x=state.get('filtered_df')[state.get('date_col')],
+                        y=state.get('filtered_df')[selected_column],
+                        name='После обработки',
+                        line=dict(color='#ff7f0e', width=2, dash='dot')
+                    ))
+                    
+                    # Добавляем линии для среднего и стандартного отклонения
+                    mean_before = state.get('outliers_initial')[selected_column].mean()
+                    std_before = state.get('outliers_initial')[selected_column].std()
+                    mean_after = state.get('filtered_df')[selected_column].mean()
+                    std_after = state.get('filtered_df')[selected_column].std()
+                    
+                    fig.add_hline(
+                        y=mean_before,
+                        line_dash="dash",
+                        line_color="#17becf",
+                        annotation_text="Среднее (до)",
+                        annotation_position="top right"
+                    )
+                    
+                    fig.add_hline(
+                        y=mean_after,
+                        line_dash="dash",
+                        line_color="#bcbd22",
+                        annotation_text="Среднее (после)",
+                        annotation_position="top right",
+                        name="Среднее после обработки"
+                    )
+                    
+                    fig.update_layout(
+                        title=f"Временной ряд {selected_column} до и после обработки",
+                        xaxis_title="Дата",
+                        yaxis_title="Значение",
+                        height=500,
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        ),
+                        hovermode="x unified"
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
 
 def show_scaling_tab(key_prefix: str = "main"):
     """Отображение вкладки масштабирования данных"""
@@ -894,6 +997,8 @@ def show_scaling_tab(key_prefix: str = "main"):
             if st.button("Отменить масштабирование", type="secondary", key="revert_scaling"):
                 state.set('filtered_df', state.get('scaling_initial').copy())
                 state.reset('scaling_initial')
+                state.set('filtered_df', state.get('scaling_initial').copy())
+                state.reset('feature_df')
                 st.rerun()
 
     with col2:

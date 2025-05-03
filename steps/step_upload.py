@@ -4,6 +4,7 @@ import pandas as pd
 from state.session import state
 from services.data_service import DataService
 from components.charts import create_time_series_plot
+from components.forecasting.model_registry import ModelType
 
 def load_data(uploaded_file):
     """Загрузка данных из файла"""
@@ -11,6 +12,9 @@ def load_data(uploaded_file):
         df = pd.read_csv(uploaded_file)
     else:
         df = pd.read_excel(uploaded_file)
+    
+    # Очищаем процентные значения
+    df = DataService.clean_percentage_values(df)
     
     # Compare files based on their content hash instead of file_id
     current_file = state.get('current_file')
@@ -23,6 +27,11 @@ def load_data(uploaded_file):
     if is_new_file:
         date_col = None
         target_col = None
+        # Сбросить все обученные модели из session_state
+        for model in ModelType:
+            key = f"{model.value.lower()}_model"
+            if key in st.session_state:
+                del st.session_state[key]
     else:
         date_col = state.get('date_col')
         target_col = state.get('target_col')

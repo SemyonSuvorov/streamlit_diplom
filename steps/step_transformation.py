@@ -223,10 +223,9 @@ def show_features_tab():
             "Скользящее стандартное отклонение",
             "Разница",
             "Процентное изменение",
-            "Квартал",
-            "День месяца",
-            "День года",
-            "Неделя года"
+            "День месяца (sin/cos)",
+            "День года (sin/cos)",
+            "Неделя года (sin/cos)"
         ]
         # Фильтрация типов признаков, которые уже есть в датафрейме
         filtered_feature_types = []
@@ -243,8 +242,16 @@ def show_features_tab():
             elif ft == "Процентное изменение":
                 if any(col.startswith("pct_change_") for col in existing_cols):
                     continue
+            elif ft == "День месяца (sin/cos)":
+                if any(col.startswith("day_of_month_sin") for col in existing_cols) or any(col.startswith("day_of_month_cos") for col in existing_cols):
+                    continue
+            elif ft == "День года (sin/cos)":
+                if any(col.startswith("day_of_year_sin") for col in existing_cols) or any(col.startswith("day_of_year_cos") for col in existing_cols):
+                    continue
+            elif ft == "Неделя года (sin/cos)":
+                if any(col.startswith("week_of_year_sin") for col in existing_cols) or any(col.startswith("week_of_year_cos") for col in existing_cols):
+                    continue
             else:
-                # Календарные признаки
                 feature_name = ft.lower().replace(' ', '_')
                 if feature_name in existing_cols:
                     continue
@@ -307,8 +314,67 @@ def show_features_tab():
                             key="pct_change_periods"
                         )
                         features_to_add[f"pct_change_{periods}"] = ts.pct_change(periods)
-
-                    elif feature_type in ["Квартал", "День месяца", "День года", "Неделя года"]:
+                    elif feature_type == "День месяца (sin/cos)":
+                        try:
+                            date_col = state.get('date_col')
+                            if date_col not in state.get('filtered_df').columns:
+                                st.error(f"Столбец с датой '{date_col}' не найден в данных")
+                                return
+                            temp_df = state.get('filtered_df').copy()
+                            temp_df[date_col] = pd.to_datetime(temp_df[date_col])
+                            temp_df = temp_df.rename(columns={date_col: 'date'})
+                            cyclic_df = TransformationService.create_features(
+                                temp_df,
+                                state.get('target_col'),
+                                feature_type,
+                                date_col='date'
+                            )
+                            for col in cyclic_df.columns:
+                                features_to_add[col] = cyclic_df[col]
+                        except Exception as e:
+                            st.error(f"Ошибка создания признака День месяца (sin/cos): {str(e)}")
+                            continue
+                    elif feature_type == "День года (sin/cos)":
+                        try:
+                            date_col = state.get('date_col')
+                            if date_col not in state.get('filtered_df').columns:
+                                st.error(f"Столбец с датой '{date_col}' не найден в данных")
+                                return
+                            temp_df = state.get('filtered_df').copy()
+                            temp_df[date_col] = pd.to_datetime(temp_df[date_col])
+                            temp_df = temp_df.rename(columns={date_col: 'date'})
+                            cyclic_df = TransformationService.create_features(
+                                temp_df,
+                                state.get('target_col'),
+                                feature_type,
+                                date_col='date'
+                            )
+                            for col in cyclic_df.columns:
+                                features_to_add[col] = cyclic_df[col]
+                        except Exception as e:
+                            st.error(f"Ошибка создания признака День года (sin/cos): {str(e)}")
+                            continue
+                    elif feature_type == "Неделя года (sin/cos)":
+                        try:
+                            date_col = state.get('date_col')
+                            if date_col not in state.get('filtered_df').columns:
+                                st.error(f"Столбец с датой '{date_col}' не найден в данных")
+                                return
+                            temp_df = state.get('filtered_df').copy()
+                            temp_df[date_col] = pd.to_datetime(temp_df[date_col])
+                            temp_df = temp_df.rename(columns={date_col: 'date'})
+                            cyclic_df = TransformationService.create_features(
+                                temp_df,
+                                state.get('target_col'),
+                                feature_type,
+                                date_col='date'
+                            )
+                            for col in cyclic_df.columns:
+                                features_to_add[col] = cyclic_df[col]
+                        except Exception as e:
+                            st.error(f"Ошибка создания признака Неделя года (sin/cos): {str(e)}")
+                            continue
+                    elif feature_type in ["Квартал"]:
                         try:
                             # Проверяем наличие столбца с датой
                             date_col = state.get('date_col')

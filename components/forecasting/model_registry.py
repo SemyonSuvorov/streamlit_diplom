@@ -3,7 +3,7 @@ from enum import Enum
 from components.forecasting.base_model import BaseModel, ModelConfig
 
 class ModelType(Enum):
-    ARIMA = "ARIMA"
+    SARIMA = "SARIMA"
     XGBOOST = "XGBoost"
     CATBOOST = "CatBoost"
     LSTM = "LSTM"

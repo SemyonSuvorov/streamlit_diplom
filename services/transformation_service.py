@@ -190,5 +190,23 @@ class TransformationService:
             return ts.index.dayofyear
         elif feature_type == "Неделя года":
             return ts.index.isocalendar().week.astype(int)
+        elif feature_type == "День месяца (sin/cos)":
+            day = ts.index.day
+            return pd.DataFrame({
+                'day_of_month_sin': np.sin(2 * np.pi * day / 31),
+                'day_of_month_cos': np.cos(2 * np.pi * day / 31)
+            }, index=ts.index)
+        elif feature_type == "День года (sin/cos)":
+            dayofyear = ts.index.dayofyear
+            return pd.DataFrame({
+                'day_of_year_sin': np.sin(2 * np.pi * dayofyear / 366),
+                'day_of_year_cos': np.cos(2 * np.pi * dayofyear / 366)
+            }, index=ts.index)
+        elif feature_type == "Неделя года (sin/cos)":
+            weekofyear = ts.index.isocalendar().week.astype(int)
+            return pd.DataFrame({
+                'week_of_year_sin': np.sin(2 * np.pi * weekofyear / 53),
+                'week_of_year_cos': np.cos(2 * np.pi * weekofyear / 53)
+            }, index=ts.index)
         
         raise ValueError(f"Неизвестный тип признака: {feature_type}") 

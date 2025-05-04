@@ -82,18 +82,18 @@ def show_forecast_tab():
                 st.error("Не найден feature_df для прогноза. Переобучите модель на вкладке 'Обучение'.")
                 return
 
-            # === Проверка совпадения признаков ===
-            model_features = set(getattr(model, 'feature_names', []))
-            df_features = set([col for col in ts.columns if col != (model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col'))])
-            missing_in_df = model_features - df_features
-            extra_in_df = df_features - model_features
-            if missing_in_df or extra_in_df:
-                st.error(f"Набор признаков в модели не совпадает с текущими признаками в данных!\n"
-                         f"\nОтсутствуют в данных: {', '.join(missing_in_df) if missing_in_df else 'нет'}"
-                         f"\nЛишние в данных: {', '.join(extra_in_df) if extra_in_df else 'нет'}\n"
-                         "Переобучите модель или вернитесь к шагу трансформации.")
-                return
-            # === Конец проверки совпадения признаков ===
+            if model_type != ModelType.SARIMA:
+                model_features = set(getattr(model, 'feature_names', []))
+                df_features = set([col for col in ts.columns if col != (model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col'))])
+                missing_in_df = model_features - df_features
+                extra_in_df = df_features - model_features
+                if missing_in_df or extra_in_df:
+                    st.error(f"Набор признаков в модели не совпадает с текущими признаками в данных!\n"
+                             f"\nОтсутствуют в данных: {', '.join(missing_in_df) if missing_in_df else 'нет'}"
+                             f"\nЛишние в данных: {', '.join(extra_in_df) if extra_in_df else 'нет'}\n"
+                             "Переобучите модель или вернитесь к шагу трансформации.")
+                    return
+
 
             # Create progress bar
             progress_bar = st.progress(0)
@@ -106,7 +106,10 @@ def show_forecast_tab():
             
             # Make forecast
             try:
-                forecast, conf_int = model.forecast(ts, forecast_horizon, progress_callback=update_progress)
+                if model_type == ModelType.SARIMA:
+                    forecast, conf_int = model.forecast(ts[model.config.target_col], forecast_horizon)
+                else:
+                    forecast, conf_int = model.forecast(ts, forecast_horizon, progress_callback=update_progress)
             except Exception as e:
                 error_msg = str(e)
                 if "Model has not been trained" in error_msg or "Call fit() first" in error_msg:
@@ -119,7 +122,6 @@ def show_forecast_tab():
                 else:
                     # Re-raise if it's another error
                     raise
-            
             # Store forecast in session state
             st.session_state[f"{model_type.value.lower()}_forecast"] = forecast
             st.session_state[f"{model_type.value.lower()}_conf_int"] = conf_int

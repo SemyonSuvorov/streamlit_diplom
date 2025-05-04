@@ -109,8 +109,7 @@ class XGBoostModel(BaseModel):
             x=self.test_data['dates'],
             y=self.test_data['actual'],
             mode='lines+markers',
-            name='Факт',
-            line=dict(color='blue')
+            name='Факт'
         ))
         fig.add_trace(go.Scatter(
             x=self.test_data['dates'],
@@ -285,8 +284,7 @@ class XGBoostModel(BaseModel):
         fig.add_trace(go.Scatter(
             x=ts.index,
             y=ts.values,
-            name='Historical',
-            line=dict(color='blue')
+            name='Historical'
         ))
         
         # Add forecast

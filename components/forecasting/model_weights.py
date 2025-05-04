@@ -8,7 +8,7 @@ def get_available_weights(model_name: str) -> List[str]:
         ModelType.PROPHET.value: ["Prophet_retail_2021.pkl"],
         ModelType.TRANSFORMER.value: ["Transformer_finance_2024.ckpt"],
         ModelType.GRU.value: [],
-        ModelType.ARIMA.value: [],
+        ModelType.SARIMA.value: [],
         ModelType.RANDOM_FOREST.value: [],
         ModelType.XGBOOST.value: [],
         ModelType.CATBOOST.value: []

@@ -139,7 +139,7 @@ def show_stationarity_tab():
         st.markdown("### Преобразование ряда")
         transform_method = st.selectbox(
             "Выберите метод преобразования:",
-            ["Дифференцирование", "Логарифмирование", "Скользящее среднее"],
+            ["Дифференцирование", "Логарифмирование", "Сезонное дифференцирование"],
             index=None,
             placeholder="Выберите метод...",
             key="transform_select"
@@ -155,12 +155,12 @@ def show_stationarity_tab():
                         help="Рекомендуется начинать с 1-го порядка",
                         key="diff_order"
                     )
-                elif transform_method == "Скользящее среднее":
-                    params['window'] = st.number_input(
-                        "Размер окна",
-                        min_value=2, max_value=90, value=7,
-                        help="Выбирайте в зависимости от сезонности данных",
-                        key="window_size"
+                elif transform_method == "Сезонное дифференцирование":
+                    params['seasonal_period'] = st.number_input(
+                        "Сезонный период",
+                        min_value=2, max_value=365, value=12,
+                        help="Период сезонности (например, 12 для месячных данных)",
+                        key="seasonal_period"
                     )
             
             if st.button("Применить преобразование", type="primary", key="apply_transform"):
@@ -178,8 +178,8 @@ def show_stationarity_tab():
                         else:
                             st.error("Логарифмирование невозможно: есть неположительные значения")
                             transformed = ts
-                    elif transform_method == "Скользящее среднее":
-                        transformed = ts.rolling(params['window']).mean().dropna()
+                    elif transform_method == "Сезонное дифференцирование":
+                        transformed = ts.diff(params['seasonal_period']).dropna()
                     
                     state.set('filtered_df', transformed.reset_index())
                     state.reset('feature_df')

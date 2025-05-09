@@ -110,6 +110,7 @@ def show_forecast_tab():
                     forecast, conf_int = model.forecast(ts[model.config.target_col], forecast_horizon)
                 else:
                     forecast, conf_int = model.forecast(ts, forecast_horizon, progress_callback=update_progress)
+
             except Exception as e:
                 error_msg = str(e)
                 if "Model has not been trained" in error_msg or "Call fit() first" in error_msg:

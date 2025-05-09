@@ -37,25 +37,43 @@ class XGBoostModel(BaseModel):
         last_y_test = None
         last_y_pred = None
         n_folds = self.n_splits
+        
         for i, (train_idx, test_idx) in enumerate(tscv.split(X)):
-            X_train, X_test = X[train_idx], X[test_idx]
-            y_train, y_test = y[train_idx], y[test_idx]
-            model = xgb.XGBRegressor(
+            # Prepare training data
+            train_df = df.iloc[train_idx].copy()
+            test_df = df.iloc[test_idx].copy()
+            
+            # Save feature names before fitting
+            self.feature_names = [col for col in train_df.columns if col != target_col]
+            
+            # Fit model on training data
+            self.model = xgb.XGBRegressor(
                 n_estimators=self.n_estimators,
                 max_depth=self.max_depth,
                 learning_rate=self.learning_rate,
                 random_state=self.random_state
             )
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_test)
+            self.model.fit(train_df.drop(columns=[target_col]), train_df[target_col])
+            
+            # Use forecast method to predict test set
+            horizon = len(test_idx)
+            forecast_series, _ = self.forecast(train_df, horizon)
+            
+            # Calculate metrics
+            y_test = test_df[target_col].values
+            y_pred = forecast_series.values
+            
             cv_metrics['mse'].append(mean_squared_error(y_test, y_pred))
             cv_metrics['mae'].append(mean_absolute_error(y_test, y_pred))
             cv_metrics['r2'].append(r2_score(y_test, y_pred))
+            
             last_test_idx = test_idx
             last_y_test = y_test
             last_y_pred = y_pred
+            
             if progress_callback is not None:
                 progress_callback(i+1, n_folds)
+                
         if last_test_idx is not None:
             self.test_data = {
                 'dates': df.index[last_test_idx],
@@ -69,11 +87,10 @@ class XGBoostModel(BaseModel):
         feature_names = [col for col in df.columns if col != target_col]
         if not feature_names:
             raise ValueError("Нет признаков для обучения модели. Добавьте признаки на этапе подготовки данных.")
-        X = df[feature_names].values
-        y = df[target_col].values
-        train_size = int(len(X) * self.train_size)
-        X_train, X_test = X[:train_size], X[train_size:]
-        y_train, y_test = y[:train_size], y[train_size:]
+        
+        train_size = int(len(df) * self.train_size)
+        train_df = df.iloc[:train_size].copy()
+        test_df = df.iloc[train_size:].copy()
 
         if state.get('feature_df') is None:
             state.set('feature_df', df.copy())
@@ -84,15 +101,24 @@ class XGBoostModel(BaseModel):
             learning_rate=self.learning_rate,
             random_state=self.random_state
         )
-        self.model.fit(X_train, y_train)
-        y_pred = self.model.predict(X_test)
+        self.model.fit(train_df.drop(columns=[target_col]), train_df[target_col])
+        
+        # Use forecast method to predict test set
+        horizon = len(test_df)
+        forecast_series, _ = self.forecast(train_df, horizon)
+        
+        # Calculate metrics
+        y_test = test_df[target_col].values
+        y_pred = forecast_series.values
+        
         metrics = {
             'mse': mean_squared_error(y_test, y_pred),
             'mae': mean_absolute_error(y_test, y_pred),
             'r2': r2_score(y_test, y_pred)
         }
+        
         self.test_data = {
-            'dates': df.index[train_size:],
+            'dates': test_df.index,
             'actual': y_test,
             'predicted': y_pred
         }
@@ -209,6 +235,7 @@ class XGBoostModel(BaseModel):
             raise ValueError("Model has not been trained yet. Call fit() first.")
         if isinstance(ts, pd.Series):
             ts = ts.to_frame(name=self.config.target_col) if hasattr(ts, 'to_frame') else pd.DataFrame({self.config.target_col: ts})
+            
         required_features = list(self.model.feature_names_in_) if hasattr(self.model, 'feature_names_in_') else self.feature_names
         feature_cols = [col for col in ts.columns if col != self.config.target_col]
         if not feature_cols:
@@ -216,6 +243,7 @@ class XGBoostModel(BaseModel):
         missing = [f for f in required_features if f not in ts.columns]
         if missing:
             raise ValueError(f"Для прогноза не хватает признаков: {missing}. Проверьте этап подготовки данных.")
+            
         last_date = ts.index[-1]
         freq = pd.infer_freq(ts.index)
         if freq is None:
@@ -227,6 +255,8 @@ class XGBoostModel(BaseModel):
             y = ts[self.config.target_col].values
             models = []
             forecasts = []
+            self.feature_names = feature_cols  # Сохраняем feature_names
+            
             for h in range(1, horizon+1):
                 y_shifted = np.roll(y, -h)
                 X_train = X[:-h]
@@ -248,20 +278,29 @@ class XGBoostModel(BaseModel):
             self.direct_models = models
             return forecast_series, None
         else:
-            forecast_values = []
+            # Создаем начальное окно для прогнозирования
             ts_for_pred = ts.copy()
+            forecast_values = []
             future_time_df = self._future_time_features(future_index, required_features) if hasattr(self, '_future_time_features') else None
+            
             for i in range(horizon):
+                # Генерируем признаки для следующего шага
                 new_date = future_index[i]
                 new_row = self._generate_next_features(ts_for_pred, new_date, required_features, future_time_df, i)
                 X_pred = np.array([new_row[f] for f in required_features]).reshape(1, -1)
+                
+                # Делаем прогноз
                 y_pred = self.model.predict(X_pred)[0]
                 forecast_values.append(y_pred)
+                
+                # Обновляем данные для следующего шага
                 new_row[self.config.target_col] = y_pred
                 new_row_df = pd.DataFrame([new_row], index=[new_date])
                 ts_for_pred = pd.concat([ts_for_pred, new_row_df], sort=False)
+                
                 if progress_callback is not None:
                     progress_callback(i+1, horizon)
+                    
             forecast_series = pd.Series(forecast_values, index=future_index)
             return forecast_series, None
     

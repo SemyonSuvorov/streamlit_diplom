@@ -78,27 +78,49 @@ class SARIMAModel(BaseModel):
         ts = df[target_col]
         if not isinstance(ts.index, pd.DatetimeIndex):
             raise ValueError("DataFrame index must be DatetimeIndex")
-        ts = self._prepare_ts(ts)
         from sklearn.model_selection import TimeSeriesSplit
         tscv = TimeSeriesSplit(n_splits=self.n_splits)
         mse_scores, mae_scores, r2_scores = [], [], []
-        train_size = int(len(ts) * self.train_size)
-        train = ts[:train_size]
-        m = self.seasonal_period if self.seasonal_period else 1
-        model = self.best_model
+        
         for i, (train_idx, test_idx) in enumerate(tscv.split(ts)):
-            test = ts.iloc[test_idx]
+            train_ts = ts.iloc[train_idx]
+            test_ts = ts.iloc[test_idx]
+            
             try:
-                forecast = model.predict(n_periods=len(test))
-                forecast = forecast * self.data_std + self.data_mean
-                test_orig = test * self.data_std + self.data_mean
-                mse_scores.append(mean_squared_error(test_orig, forecast))
-                mae_scores.append(mean_absolute_error(test_orig, forecast))
-                r2_scores.append(r2_score(test_orig, forecast))
+                # Важно: подготовка только на тренировочных данных
+                train_ts_scaled = self._prepare_ts(train_ts.copy())
+                
+                # Обучение модели если нужно
+                if self.best_model is None or i > 0:  # Переобучаем модель для каждого фолда
+                    m = self.seasonal_period if self.seasonal_period else 1
+                    model = pm.auto_arima(
+                        train_ts_scaled,
+                        start_p=1, start_q=1,
+                        test='adf',
+                        max_p=3, max_q=3,
+                        m=m,    
+                        start_P=0, seasonal=True,
+                        d=None, D=1,
+                        trace=False,
+                        error_action='ignore',
+                        suppress_warnings=True,
+                        stepwise=True
+                    )
+                    self.best_model = model
+                    self._is_fitted = True
+                
+                # Прогноз
+                forecast_values, _ = self.forecast(train_ts, len(test_ts))
+                
+                # Вычисление метрик на оригинальных данных (без масштабирования)
+                mse_scores.append(mean_squared_error(test_ts, forecast_values))
+                mae_scores.append(mean_absolute_error(test_ts, forecast_values))
+                r2_scores.append(r2_score(test_ts, forecast_values))
+                
                 self.test_data = {
-                    'dates': test.index,
-                    'actual': test_orig,
-                    'predicted': forecast
+                    'dates': test_ts.index,
+                    'actual': test_ts,
+                    'predicted': forecast_values
                 }
                 self.metrics = {
                     'mse': mse_scores[-1],
@@ -108,6 +130,7 @@ class SARIMAModel(BaseModel):
                 if progress_callback:
                     progress_callback(i+1, self.n_splits)
             except Exception as e:
+                print(f"Ошибка в фолде {i}: {e}")
                 continue
         return {'mse': mse_scores, 'mae': mae_scores, 'r2': r2_scores}
 

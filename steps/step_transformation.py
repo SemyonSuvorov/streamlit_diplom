@@ -92,6 +92,10 @@ def handle_outliers(data, method, replacement_method='median', window_size=5,
 
 def show_stationarity_tab():
     """Отображение вкладки стационарности"""
+    # Инициализируем список трансформаций, если его еще нет
+    if 'stationarity_transformations' not in st.session_state:
+        st.session_state.stationarity_transformations = []
+        
     col_original, col_transformed = st.columns([1, 1], gap="large")
     
     with col_original:
@@ -170,16 +174,29 @@ def show_stationarity_tab():
                     
                     ts = state.get('filtered_df').set_index(state.get('date_col'))[state.get('target_col')].copy()
                     
+                    # Сохраняем информацию о преобразовании
+                    transformation_info = {
+                        'method': transform_method,
+                        'params': params,
+                    }
+                    
                     if transform_method == "Дифференцирование":
                         transformed = ts.diff(params['order']).dropna()
+                        transformation_info['type'] = 'diff'
                     elif transform_method == "Логарифмирование":
                         if (ts > 0).all():
                             transformed = np.log(ts)
+                            transformation_info['type'] = 'log'
                         else:
                             st.error("Логарифмирование невозможно: есть неположительные значения")
                             transformed = ts
+                            transformation_info = None
                     elif transform_method == "Сезонное дифференцирование":
                         transformed = ts.diff(params['seasonal_period']).dropna()
+                        transformation_info['type'] = 'seasonal_diff'
+                    
+                    if transformation_info:
+                        st.session_state.stationarity_transformations.append(transformation_info)
                     
                     state.set('filtered_df', transformed.reset_index())
                     state.reset('feature_df')
@@ -194,6 +211,8 @@ def show_stationarity_tab():
             if st.button("Отменить все преобразования", type="secondary", key="revert_transform"):
                 state.set('filtered_df', state.get('stationarity_initial').copy())
                 state.reset('stationarity_initial')
+                # Очищаем список преобразований
+                st.session_state.stationarity_transformations = []
                 # Очищаем кэш тестов стационарности
                 if 'stationarity_tests' in st.session_state:
                     del st.session_state.stationarity_tests

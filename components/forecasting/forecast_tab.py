@@ -7,6 +7,99 @@ from components.forecasting.model_registry import ModelType
 import numpy as np
 from services.transformation_service import TransformationService
 
+def inverse_transform_forecast(forecast_series, conf_int=None):
+    """
+    Выполняет обратное преобразование прогноза на основе
+    сохраненных трансформаций стационарности
+    """
+    # Если преобразований не было, возвращаем исходные данные
+    if 'stationarity_transformations' not in st.session_state or not st.session_state.stationarity_transformations:
+        return forecast_series, conf_int
+    
+    # Применяем преобразования в обратном порядке
+    transformed_forecast = forecast_series.copy()
+    transformed_conf_int = None if conf_int is None else conf_int.copy()
+    
+    # Поскольку преобразования применялись последовательно,
+    # мы применяем обратные преобразования в обратном порядке
+    for transform_info in reversed(st.session_state.stationarity_transformations):
+        transform_type = transform_info.get('type')
+        params = transform_info.get('params', {})
+        
+        if transform_type == 'diff':
+            # Для обратного дифференцирования нам нужно последнее значение исходного ряда
+            order = params.get('order', 1)
+            if state.get('stationarity_initial') is not None:
+                original_ts = state.get('stationarity_initial').set_index(state.get('date_col'))[state.get('target_col')]
+                last_values = original_ts.iloc[-order:].values
+                
+                # Накопительная сумма (cumsum) с начальным значением
+                forecast_values = transformed_forecast.values
+                for i in range(order):
+                    # Используем последнее значение оригинального ряда как начальное
+                    cumsum_values = np.concatenate([[last_values[-(i+1)]], forecast_values])
+                    forecast_values = np.cumsum(cumsum_values)[1:]
+                
+                transformed_forecast = pd.Series(forecast_values, index=forecast_series.index)
+                
+                # Если есть доверительные интервалы, преобразуем их тоже
+                if transformed_conf_int is not None:
+                    for col in ['lower', 'upper']:
+                        interval_values = transformed_conf_int[col].values
+                        for i in range(order):
+                            # Используем последнее значение как начальное
+                            cumsum_interval = np.concatenate([[last_values[-(i+1)]], interval_values])
+                            interval_values = np.cumsum(cumsum_interval)[1:]
+                        transformed_conf_int[col] = interval_values
+                
+        elif transform_type == 'log':
+            # Для обратного логарифмирования применяем экспоненту
+            transformed_forecast = np.exp(transformed_forecast)
+            
+            # Если есть доверительные интервалы, преобразуем их тоже
+            if transformed_conf_int is not None:
+                transformed_conf_int['lower'] = np.exp(transformed_conf_int['lower'])
+                transformed_conf_int['upper'] = np.exp(transformed_conf_int['upper'])
+                
+        elif transform_type == 'seasonal_diff':
+            # Для обратного сезонного дифференцирования также нужны исходные значения
+            seasonal_period = params.get('seasonal_period', 12)
+            if state.get('stationarity_initial') is not None:
+                original_ts = state.get('stationarity_initial').set_index(state.get('date_col'))[state.get('target_col')]
+                
+                # Получаем сезонные значения
+                seasonal_values = original_ts.iloc[-seasonal_period:].values
+                
+                # Выполняем обратное сезонное дифференцирование
+                forecast_values = transformed_forecast.values
+                result_values = np.zeros_like(forecast_values)
+                
+                for i in range(len(forecast_values)):
+                    if i < seasonal_period:
+                        # Используем исходные сезонные значения
+                        result_values[i] = forecast_values[i] + seasonal_values[i]
+                    else:
+                        # Используем уже рассчитанные значения
+                        result_values[i] = forecast_values[i] + result_values[i - seasonal_period]
+                
+                transformed_forecast = pd.Series(result_values, index=forecast_series.index)
+                
+                # Если есть доверительные интервалы, преобразуем их тоже
+                if transformed_conf_int is not None:
+                    for col in ['lower', 'upper']:
+                        interval_values = transformed_conf_int[col].values
+                        result_interval = np.zeros_like(interval_values)
+                        
+                        for i in range(len(interval_values)):
+                            if i < seasonal_period:
+                                result_interval[i] = interval_values[i] + seasonal_values[i]
+                            else:
+                                result_interval[i] = interval_values[i] + result_interval[i - seasonal_period]
+                                
+                        transformed_conf_int[col] = result_interval
+    
+    return transformed_forecast, transformed_conf_int
+
 def show_forecast_tab():
     """Display forecast tab"""
     st.markdown("### Прогнозирование")
@@ -57,6 +150,16 @@ def show_forecast_tab():
         value=True,
         key="forecast_show_confidence"
     )
+    
+    # Добавляем чекбокс для обратного преобразования только если были применены преобразования стационарности
+    inverse_transform = False
+    if 'stationarity_transformations' in st.session_state and st.session_state.stationarity_transformations:
+        inverse_transform = st.checkbox(
+            "Выполнить обратное преобразование стационарности",
+            value=True,
+            help="Применить обратное преобразование к прогнозу, чтобы вернуть его к исходному масштабу данных",
+            key="forecast_inverse_transform"
+        )
     
     if st.button("Сделать прогноз", type="primary", key="forecast_make_forecast"):
         progress_bar = None
@@ -123,6 +226,14 @@ def show_forecast_tab():
                 else:
                     # Re-raise if it's another error
                     raise
+                    
+            # Выполняем обратное преобразование, если это запрошено и были трансформации
+            original_forecast = forecast.copy()
+            original_conf_int = None if conf_int is None else conf_int.copy()
+            
+            if inverse_transform:
+                forecast, conf_int = inverse_transform_forecast(forecast, conf_int)
+                    
             # Store forecast in session state
             st.session_state[f"{model_type.value.lower()}_forecast"] = forecast
             st.session_state[f"{model_type.value.lower()}_conf_int"] = conf_int
@@ -140,10 +251,20 @@ def show_forecast_tab():
                 target_col = model.config.target_col
             else:
                 target_col = state.get('target_col')
-            fig.add_trace(
-                go.Scatter(x=ts.index, y=ts[target_col], name="Исторические данные"),
-                row=1, col=1
-            )
+                
+            # Если выполнено обратное преобразование и есть исходный ряд, используем его вместо текущего
+            historical_data = ts[target_col]
+            if inverse_transform and state.get('stationarity_initial') is not None:
+                original_ts = state.get('stationarity_initial').set_index(state.get('date_col'))[state.get('target_col')]
+                fig.add_trace(
+                    go.Scatter(x=original_ts.index, y=original_ts.values, name="Исторические данные"),
+                    row=1, col=1
+                )
+            else:
+                fig.add_trace(
+                    go.Scatter(x=ts.index, y=ts[target_col], name="Исторические данные"),
+                    row=1, col=1
+                )
             
             # Add forecast
             fig.add_trace(
@@ -186,7 +307,12 @@ def show_forecast_tab():
                 )
             
             # Update layout
-            fig.update_layout(height=800, showlegend=True)
+            transformed_text = " (обратно преобразованный)" if inverse_transform else ""
+            fig.update_layout(
+                height=800, 
+                showlegend=True,
+                title=f"Прогноз{transformed_text}"
+            )
             fig.update_xaxes(title_text="Дата", row=1, col=1)
             fig.update_xaxes(title_text="Дата", row=2, col=1)
             fig.update_yaxes(title_text="Значение", row=1, col=1)

@@ -57,19 +57,37 @@ class XGBoostModel(BaseModel):
             
             # Use forecast method to predict test set
             horizon = len(test_idx)
-            forecast_series, _ = self.forecast(train_df, horizon)
             
-            # Calculate metrics
-            y_test = test_df[target_col].values
-            y_pred = forecast_series.values
+            # Override to use direct forecasting for cross-validation
+            old_approach = getattr(self.config, 'forecast_approach', 'recursive')
+            self.config.forecast_approach = 'direct'
             
-            cv_metrics['mse'].append(mean_squared_error(y_test, y_pred))
-            cv_metrics['mae'].append(mean_absolute_error(y_test, y_pred))
-            cv_metrics['r2'].append(r2_score(y_test, y_pred))
-            
-            last_test_idx = test_idx
-            last_y_test = y_test
-            last_y_pred = y_pred
+            try:
+                forecast_series, _ = self.forecast(train_df, horizon)
+                
+                # Calculate metrics
+                y_test = test_df[target_col].values
+                y_pred = forecast_series.values
+                
+                # Ensure same length
+                min_len = min(len(y_test), len(y_pred))
+                y_test = y_test[:min_len]
+                y_pred = y_pred[:min_len]
+                
+                # Compute metrics
+                cv_metrics['mse'].append(mean_squared_error(y_test, y_pred))
+                cv_metrics['mae'].append(mean_absolute_error(y_test, y_pred))
+                cv_metrics['r2'].append(r2_score(y_test, y_pred))
+                
+                last_test_idx = test_idx[:min_len]
+                last_y_test = y_test
+                last_y_pred = y_pred
+            except Exception as e:
+                print(f"Error in fold {i}: {e}")
+                continue
+            finally:
+                # Restore original approach
+                self.config.forecast_approach = old_approach
             
             if progress_callback is not None:
                 progress_callback(i+1, n_folds)
@@ -105,23 +123,38 @@ class XGBoostModel(BaseModel):
         
         # Use forecast method to predict test set
         horizon = len(test_df)
-        forecast_series, _ = self.forecast(train_df, horizon)
         
-        # Calculate metrics
-        y_test = test_df[target_col].values
-        y_pred = forecast_series.values
+        # Override to use direct forecasting for evaluation
+        old_approach = getattr(self.config, 'forecast_approach', 'recursive')
+        self.config.forecast_approach = 'direct'
         
-        metrics = {
-            'mse': mean_squared_error(y_test, y_pred),
-            'mae': mean_absolute_error(y_test, y_pred),
-            'r2': r2_score(y_test, y_pred)
-        }
-        
-        self.test_data = {
-            'dates': test_df.index,
-            'actual': y_test,
-            'predicted': y_pred
-        }
+        try:
+            forecast_series, _ = self.forecast(train_df, horizon)
+            
+            # Calculate metrics
+            y_test = test_df[target_col].values
+            y_pred = forecast_series.values
+            
+            # Ensure same length
+            min_len = min(len(y_test), len(y_pred))
+            y_test = y_test[:min_len]
+            y_pred = y_pred[:min_len]
+            
+            metrics = {
+                'mse': mean_squared_error(y_test, y_pred),
+                'mae': mean_absolute_error(y_test, y_pred),
+                'r2': r2_score(y_test, y_pred)
+            }
+            
+            self.test_data = {
+                'dates': test_df.index[:min_len],
+                'actual': y_test,
+                'predicted': y_pred
+            }
+        finally:
+            # Restore original approach
+            self.config.forecast_approach = old_approach
+            
         self.feature_names = feature_names
         self._is_fitted = True
         return self.model, metrics

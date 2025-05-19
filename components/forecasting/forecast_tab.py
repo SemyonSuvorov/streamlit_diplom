@@ -289,22 +289,32 @@ def show_forecast_tab():
             
             # Add forecast details
             # 1. Trend analysis
-            trend = np.polyfit(range(len(forecast)), forecast.values, 1)[0]
-            fig.add_trace(
-                go.Scatter(x=forecast.index, y=forecast.values, name="Тренд",
-                          line=dict(color='green', dash='dash')),
-                row=2, col=1
-            )
-            
-            # 2. Seasonal decomposition (if applicable)
-            if len(forecast) > 7:  # Only if we have enough data for weekly seasonality
-                weekly_avg = forecast.groupby(forecast.index.dayofweek).mean()
-                seasonal = weekly_avg.reindex(forecast.index.dayofweek).values
+            try:
+                forecast_values = np.array(forecast.values, dtype=np.float64)
+                if np.isnan(forecast_values).any():
+                    st.warning("В прогнозе есть некорректные значения. Анализ тренда может быть неточным.")
+                    forecast_values = np.nan_to_num(forecast_values)
+                
+                trend = np.polyfit(range(len(forecast)), forecast_values, 1)[0]
                 fig.add_trace(
-                    go.Scatter(x=forecast.index, y=seasonal, name="Сезонность",
-                              line=dict(color='purple', dash='dot')),
+                    go.Scatter(x=forecast.index, y=forecast_values, name="Тренд",
+                              line=dict(color='green', dash='dash')),
                     row=2, col=1
                 )
+                
+                # 2. Seasonal decomposition (if applicable)
+                if len(forecast) > 7:  # Only if we have enough data for weekly seasonality
+                    weekly_avg = pd.Series(forecast_values, index=forecast.index).groupby(forecast.index.dayofweek).mean()
+                    seasonal = weekly_avg.reindex(forecast.index.dayofweek).values
+                    fig.add_trace(
+                        go.Scatter(x=forecast.index, y=seasonal, name="Сезонность",
+                                  line=dict(color='purple', dash='dot')),
+                        row=2, col=1
+                    )
+            except Exception as e:
+                st.warning(f"Не удалось выполнить анализ тренда и сезонности: {str(e)}")
+                # Продолжаем без анализа тренда и сезонности
+                pass
             
             # Update layout
             transformed_text = " (обратно преобразованный)" if inverse_transform else ""

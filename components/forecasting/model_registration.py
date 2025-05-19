@@ -1,6 +1,7 @@
 from models.xgboost_model import XGBoostModel
 from models.catboost_model import CatBoostModel
 from models.sarima_model import SARIMAModel
+from models.lstm_model import LSTMModel
 from components.forecasting.model_registry import ModelRegistry, ModelType
 
 def register_models():
@@ -47,5 +48,21 @@ def register_models():
             'seasonal_period': 0,
             'train_size': 0.8,
             'n_splits': 5
+        }
+    )
+
+    # Register LSTM model
+    ModelRegistry.register(
+        ModelType.LSTM,
+        LSTMModel,
+        {
+            'window_size': 14,
+            'train_size': 0.8,
+            'n_splits': 5,
+            'epochs': 20,
+            'batch_size': 32,
+            'hidden_size': 64,
+            'num_layers': 2,
+            'learning_rate': 0.001
         }
     ) 

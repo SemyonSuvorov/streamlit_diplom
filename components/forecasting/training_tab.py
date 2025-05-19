@@ -194,9 +194,10 @@ def show_training_tab():
                     progress_bar.progress(progress)
                     status_text.text(f"Прогресс: {int(progress * 100)}%")
                 model = ModelFactory.create_model(model_type, config)
+                # Сначала обучаем модель
+                model.fit(X_df, config.target_col, progress_callback=update_progress)
+                # Затем делаем кросс-валидацию
                 cv_metrics = model.cross_validate(X_df, config.target_col, progress_callback=update_progress)
-                if model_type in [ModelType.XGBOOST, ModelType.CATBOOST]:
-                    model.fit(X_df, config.target_col)
 
             st.markdown("### Основные метрики")
             if isinstance(cv_metrics, dict) and all(isinstance(v, list) for v in cv_metrics.values()):
@@ -217,11 +218,17 @@ def show_training_tab():
             if model_type != ModelType.SARIMA:
                 progress_bar.empty()
                 status_text.empty()
-            if hasattr(model, '_is_fitted') and model._is_fitted:
-                st.session_state[f"{model_type.value.lower()}_model"] = model
-                state.set('feature_df', X_df.reset_index() if isinstance(X_df.index, pd.DatetimeIndex) else X_df)
+            
+            if hasattr(model, '_is_fitted'):
+                if model._is_fitted:
+                    st.session_state[f"{model_type.value.lower()}_model"] = model
+                    state.set('feature_df', X_df.reset_index() if isinstance(X_df.index, pd.DatetimeIndex) else X_df)
+                    st.success("Модель успешно обучена и сохранена!")
+                else:
+                    st.error("Модель не была корректно обучена. Повторите попытку с другими параметрами.")
             else:
-                st.error("Модель не была корректно обучена. Повторите попытку с другими параметрами.")
+                st.error("Ошибка инициализации модели. Проверьте параметры и данные.")
             return
         except Exception as e:
-            st.error(f"Ошибка при кросс-валидации: {str(e)}") 
+            import traceback
+            st.error(f"Ошибка при обучении модели: {str(e)}") 

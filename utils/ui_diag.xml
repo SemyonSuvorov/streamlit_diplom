@@ -1,0 +1,163 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.6">
+  <diagram id="XJoeD_yZG2gsYSqaLLbr" name="Страница — 1">
+    <mxGraphModel dx="1991" dy="640" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="main_ui" value="Streamlit Web Interface" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;verticalAlign=top;dashed=1;dashPattern=1 2;glass=0;shadow=0;" parent="1" vertex="1">
+          <mxGeometry x="120" y="40" width="610" height="550" as="geometry" />
+        </mxCell>
+        <mxCell id="navigation_component" value="Navigation Component&#xa;(navigation.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="240" y="100" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_component" value="Authentication Component&#xa;(auth.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="490" y="100" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="steps_container" value="Workflow Steps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;verticalAlign=top;dashed=1;opacity=50;" parent="1" vertex="1">
+          <mxGeometry x="170" y="200" width="520" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="step1" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Upload&lt;br&gt;(step_upload.py)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="180" y="240" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step2" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Preprocessing&lt;br&gt;(step_preprocessing.py)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="310" y="240" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step3" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Transformation&lt;br&gt;(step_transformation.py)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="440" y="240" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step4" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Forecasting&lt;br&gt;(step_forecasting.py)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="570" y="240" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="forecasting_container" value="Forecasting Component" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;verticalAlign=top;dashed=1;opacity=50;" parent="1" vertex="1">
+          <mxGeometry x="170" y="310" width="520" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="model_selection" value="Model Selection&#xa;(model_selection.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="190" y="350" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="training_tab" value="Training Interface&#xa;(training_tab.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="350" y="350" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="forecast_tab" value="Forecast Interface&#xa;(forecast_tab.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="510" y="350" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="model_registry" value="Model Registry&#xa;(model_registry.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="190" y="410" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="base_model" value="Base Model&#xa;(base_model.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="350" y="410" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="model_weights" value="Model Weights&#xa;(model_weights.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="510" y="410" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vis_container" value="Visualization Components" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;verticalAlign=top;dashed=1;opacity=50;" parent="1" vertex="1">
+          <mxGeometry x="170" y="490" width="520" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="time_series" value="Time Series Plot" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="190" y="520" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stl_plot" value="STL Plot" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="310" y="520" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="box_plot" value="Box Plot" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="430" y="520" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="histogram" value="Histogram" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="550" y="520" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="streamlit" value="Streamlit" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="-20" y="105" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="plotly" value="Plotly" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="-20" y="505" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="state_management" value="Session State&#xa;(session.py)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="375" y="610" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="nav_to_steps" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="navigation_component" target="steps_container" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step1_to_step2" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="step1" target="step2" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step2_to_step3" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="step2" target="step3" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step3_to_step4" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="step3" target="step4" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step4_to_forecasting" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="step4" target="forecasting_container" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="model_selection_to_training" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="model_selection" target="training_tab" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="training_to_forecast" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="training_tab" target="forecast_tab" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="registry_to_model_selection" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="model_registry" target="model_selection" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="base_model_to_training" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="base_model" target="training_tab" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="weights_to_forecast" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="model_weights" target="forecast_tab" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="forecasting_to_charts" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="forecasting_container" target="vis_container" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="streamlit_to_ui" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="streamlit" target="navigation_component" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="plotly_to_charts" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="plotly" target="vis_container" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="state_to_all" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="state_management" target="vis_container" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

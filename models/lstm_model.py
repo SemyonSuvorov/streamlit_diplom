@@ -37,15 +37,31 @@ class LSTMModel(BaseModel):
         return np.array(Xs), np.array(ys)
 
     def create_features(self, df: pd.DataFrame, target_col: str) -> Tuple[np.ndarray, np.ndarray]:
-        feature_cols = [col for col in df.columns if col != target_col]
+        # Ensure target column exists
+        if target_col not in df.columns:
+            raise ValueError(f"Target column '{target_col}' not found in dataframe. Available columns: {', '.join(df.columns)}")
+            
+        # Use feature_names if available, otherwise use all columns except target
+        if self.feature_names is not None:
+            # Make a copy to avoid modifying the original
+            feature_cols = [col for col in self.feature_names if col != target_col and col in df.columns]
+        else:
+            feature_cols = [col for col in df.columns if col != target_col]
+            
+        # Validate we have at least some features
+        if not feature_cols:
+            raise ValueError(f"No feature columns found. Available columns: {', '.join(df.columns)}")
+            
         X = df[feature_cols].values.astype(np.float32)
         y = df[[target_col]].values.astype(np.float32)
+        
         if self._is_fitted:
             X = self.scaler_x.transform(X)
             y = self.scaler_y.transform(y)
         else:
             X = self.scaler_x.fit_transform(X)
             y = self.scaler_y.fit_transform(y)
+            
         self.feature_names = feature_cols
         return X, y.squeeze()
 
@@ -53,56 +69,35 @@ class LSTMModel(BaseModel):
         model = keras.Sequential()
         model.add(keras.Input(shape=input_shape))
         
+        # Reduce complexity and regularization strength
         # First LSTM layer with return sequences
         model.add(layers.LSTM(
             self.hidden_size,
             return_sequences=True,
-            kernel_regularizer=keras.regularizers.l2(0.01),
-            recurrent_regularizer=keras.regularizers.l2(0.01)
+            kernel_regularizer=keras.regularizers.l2(0.001),  # Reduced from 0.01
+            recurrent_regularizer=keras.regularizers.l2(0.001)
         ))
         model.add(layers.BatchNormalization())
-        model.add(layers.Dropout(0.3))
+        model.add(layers.Dropout(0.2))  # Reduced from 0.3
         
         # Second LSTM layer
         model.add(layers.LSTM(
             self.hidden_size // 2,
-            return_sequences=True,
-            kernel_regularizer=keras.regularizers.l2(0.01),
-            recurrent_regularizer=keras.regularizers.l2(0.01)
+            kernel_regularizer=keras.regularizers.l2(0.001),
+            recurrent_regularizer=keras.regularizers.l2(0.001)
         ))
-        model.add(layers.BatchNormalization())
-        model.add(layers.Dropout(0.3))
-        
-        # Third LSTM layer
-        model.add(layers.LSTM(
-            self.hidden_size // 4,
-            kernel_regularizer=keras.regularizers.l2(0.01),
-            recurrent_regularizer=keras.regularizers.l2(0.01)
-        ))
-        model.add(layers.BatchNormalization())
-        model.add(layers.Dropout(0.3))
-        
-        # Dense layers
-        model.add(layers.Dense(64, activation='relu'))
         model.add(layers.BatchNormalization())
         model.add(layers.Dropout(0.2))
         
+        # Simplified - removed extra LSTM layer and reduced dense layers
         model.add(layers.Dense(32, activation='relu'))
         model.add(layers.BatchNormalization())
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dropout(0.1))  # Reduced from 0.2
         
         model.add(layers.Dense(1))
         
-        # Use Adam optimizer with learning rate decay
-        initial_learning_rate = self.learning_rate
-        lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate,
-            decay_steps=1000,
-            decay_rate=0.9,
-            staircase=True
-        )
-        
-        optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
+        # Use Adam optimizer with fixed learning rate
+        optimizer = keras.optimizers.Adam(learning_rate=self.learning_rate)
         model.compile(optimizer=optimizer, loss='mse')
         return model
 
@@ -110,6 +105,10 @@ class LSTMModel(BaseModel):
         feature_names = [col for col in df.columns if col != target_col]
         if not feature_names:
             raise ValueError("Нет признаков для обучения модели. Добавьте признаки на этапе подготовки данных.")
+        
+        # Store both feature names and target column for later use
+        self.feature_names = feature_names
+        self.config.target_col = target_col
         
         # Split data into train and validation sets
         train_size = int(len(df) * self.train_size)
@@ -133,7 +132,7 @@ class LSTMModel(BaseModel):
         callbacks = [
             keras.callbacks.EarlyStopping(
                 monitor='val_loss',
-                patience=10,
+                patience=15,  # Increased from 10
                 restore_best_weights=True,
                 mode='min'
             ),
@@ -168,7 +167,7 @@ class LSTMModel(BaseModel):
             y_train_seq,
             validation_split=0.2,
             epochs=self.epochs,
-            batch_size=self.batch_size,
+            batch_size=min(32, len(X_train_seq) // 10),  # Dynamic batch size based on data size
             callbacks=callbacks,
             verbose=0
         )
@@ -250,27 +249,140 @@ class LSTMModel(BaseModel):
         if isinstance(df, pd.Series):
             df = df.to_frame(name=self.config.target_col) if hasattr(df, 'to_frame') else pd.DataFrame({self.config.target_col: df})
         
-        X, y = self.create_features(df, self.config.target_col)
+        # Ensure the target column is in the dataframe
+        target_col = self.config.target_col
+        if target_col not in df.columns:
+            raise ValueError(f"Target column '{target_col}' not found in dataframe. Columns available: {', '.join(df.columns)}")
         
-        # Create sequences for prediction
-        X_seq, _ = self.create_sequences(X, y, self.window_size)
+        # Make a copy to avoid modifying the original
+        df_copy = df.copy()
         
-        # Make predictions only for the specified horizon
-        preds = self.model.predict(X_seq[:horizon]).squeeze()
-        preds = self.scaler_y.inverse_transform(preds.reshape(-1, 1)).squeeze()
-        
-        if progress_callback:
-            progress_callback(horizon, horizon)
-
-        # Create dates for the forecast
-        last_date = df.index[-1]
-        freq = pd.infer_freq(df.index)
+        # Create a new dataframe for forecasted values with same index structure
+        last_date = df_copy.index[-1]
+        freq = pd.infer_freq(df_copy.index)
         if freq is None:
-            freq = 'D'
-        forecast_index = pd.date_range(start=last_date, periods=horizon+1, freq=freq)[1:]
+            # Try to infer frequency from the last few dates
+            try:
+                freq = pd.infer_freq(df_copy.index[-5:])
+            except:
+                freq = 'D'  # Default to daily
         
-        # Create forecast series
-        forecast_series = pd.Series(preds, index=forecast_index)
+        # Create future index
+        future_index = pd.date_range(start=last_date, periods=horizon+1, freq=freq)[1:]
+        
+        # Ensure all required features are present
+        all_features = self.feature_names + [target_col] if self.feature_names else df_copy.columns.tolist()
+        for feature in all_features:
+            if feature not in df_copy.columns and '_lag' not in feature:
+                raise ValueError(f"Feature '{feature}' not found in dataframe")
+        
+        # Create lag features if needed
+        for feature in all_features:
+            if '_lag' in feature and feature not in df_copy.columns:
+                parts = feature.split('_lag')
+                base_feature = parts[0]
+                lag_num = int(parts[1])
+                if base_feature in df_copy.columns:
+                    df_copy[feature] = df_copy[base_feature].shift(lag_num)
+        
+        # Handle NaN values from creating lags
+        df_copy = df_copy.fillna(method='bfill').fillna(method='ffill')
+        
+        # Ensure we have enough history for the window size
+        if len(df_copy) < self.window_size:
+            raise ValueError(f"Not enough data points ({len(df_copy)}) for the window size ({self.window_size})")
+        
+        # Initialize with the last window_size rows of actual data
+        forecast_input = df_copy.iloc[-self.window_size:].copy()
+        forecasted_values = []
+        
+        # If the dataframe has datetime features, calculate them for the future dates
+        datetime_features = ['day', 'month', 'year', 'day_of_week', 'quarter', 
+                           'month_sin', 'month_cos', 'quarter_sin', 'quarter_cos', 
+                           'dayofweek_sin', 'dayofweek_cos']
+        has_datetime_features = any(feat in df_copy.columns for feat in datetime_features)
+        
+        # Generate forecasts one step at a time
+        for i in range(horizon):
+            # Format the data for prediction
+            X_forecast = forecast_input.copy()
+            X, _ = self.create_features(X_forecast, target_col)
+            X_seq = X.reshape(1, self.window_size, -1)
+            
+            # Make prediction
+            y_pred = self.model.predict(X_seq, verbose=0)[0][0]
+            
+            # Convert prediction back to original scale
+            y_pred_orig = self.scaler_y.inverse_transform(np.array([[y_pred]]))[0][0]
+            forecasted_values.append(y_pred_orig)
+            
+            # Create next row for the rolling forecast
+            next_date = future_index[i]
+            next_row = pd.Series(index=forecast_input.columns)
+            
+            # Set the target value to the prediction
+            next_row[target_col] = y_pred_orig
+            
+            # If we have datetime features, calculate them for the future date
+            if has_datetime_features:
+                if 'day' in forecast_input.columns:
+                    next_row['day'] = next_date.day
+                if 'month' in forecast_input.columns:
+                    next_row['month'] = next_date.month
+                if 'year' in forecast_input.columns:
+                    next_row['year'] = next_date.year
+                if 'day_of_week' in forecast_input.columns:
+                    next_row['day_of_week'] = next_date.dayofweek
+                if 'quarter' in forecast_input.columns:
+                    next_row['quarter'] = next_date.quarter
+                
+                # Calculate cyclical features if present
+                if 'month_sin' in forecast_input.columns:
+                    next_row['month_sin'] = np.sin(2 * np.pi * next_date.month / 12)
+                if 'month_cos' in forecast_input.columns:
+                    next_row['month_cos'] = np.cos(2 * np.pi * next_date.month / 12)
+                if 'quarter_sin' in forecast_input.columns:
+                    next_row['quarter_sin'] = np.sin(2 * np.pi * next_date.quarter / 4)
+                if 'quarter_cos' in forecast_input.columns:
+                    next_row['quarter_cos'] = np.cos(2 * np.pi * next_date.quarter / 4)
+                if 'dayofweek_sin' in forecast_input.columns:
+                    next_row['dayofweek_sin'] = np.sin(2 * np.pi * next_date.dayofweek / 7)
+                if 'dayofweek_cos' in forecast_input.columns:
+                    next_row['dayofweek_cos'] = np.cos(2 * np.pi * next_date.dayofweek / 7)
+            
+            # Copy other feature values from the last prediction (if any)
+            for col in forecast_input.columns:
+                if col != target_col and col not in datetime_features and pd.isna(next_row[col]):
+                    if col.endswith('_lag1'):
+                        # For lag 1 features, use the predicted value
+                        base_col = col.replace('_lag1', '')
+                        if base_col == target_col:
+                            next_row[col] = y_pred_orig
+                        else:
+                            next_row[col] = forecast_input.iloc[-1][base_col]
+                    elif '_lag' in col:
+                        # For other lag features, shift appropriately
+                        parts = col.split('_lag')
+                        base_col = parts[0]
+                        lag = int(parts[1])
+                        if lag > 1:
+                            prev_lag_col = f"{base_col}_lag{lag-1}"
+                            if prev_lag_col in forecast_input.columns:
+                                next_row[col] = forecast_input.iloc[-1][prev_lag_col]
+                    else:
+                        # For other features, carry forward
+                        next_row[col] = forecast_input.iloc[-1][col]
+            
+            # Add the new row to the forecast_input
+            next_row_df = pd.DataFrame([next_row], index=[next_date])
+            forecast_input = pd.concat([forecast_input.iloc[1:], next_row_df])
+            
+            if progress_callback:
+                progress_callback(i+1, horizon)
+        
+        # Create the forecast series
+        forecast_series = pd.Series(forecasted_values, index=future_index)
+        
         return forecast_series, None
 
     def get_metrics(self) -> Dict[str, float]:

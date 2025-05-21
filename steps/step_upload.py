@@ -9,9 +9,9 @@ from components.forecasting.model_registry import ModelType
 def load_data(uploaded_file):
     """Загрузка данных из файла"""
     if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_csv(uploaded_file,low_memory=False)
     else:
-        df = pd.read_excel(uploaded_file)
+        df = pd.read_excel(uploaded_file,low_memory=False)
     
     # Очищаем процентные значения
     df = DataService.clean_percentage_values(df)

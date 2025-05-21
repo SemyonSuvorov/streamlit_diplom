@@ -1,90 +1,140 @@
 <mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.6">
-  <diagram name="Архитектура" id="0">
-    <mxGraphModel dx="864" dy="485" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+  <diagram id="Lh9mR0Bio4vai8tCD2r6" name="Страница — 1">
+    <mxGraphModel dx="1426" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="2" value="Пользователь" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="320" width="120" height="40" as="geometry" />
+        <mxCell id="presentation_layer" value="Presentation Layer&#xa;(components/)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="100" y="100" width="200" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="3" value="Streamlit UI" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="320" y="70" width="120" height="40" as="geometry" />
+        <mxCell id="models_layer" value="Models Layer&#xa;(models/)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="550" y="220" width="200" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="4" value="Модуль состояния (SessionState)" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="290" y="130" width="180" height="40" as="geometry" />
+        <mxCell id="business_logic_layer" value="Business Logic Layer&#xa;(services/)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="100" y="320" width="200" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="Supabase" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="520" y="130" width="100" height="40" as="geometry" />
+        <mxCell id="state_layer" value="Application State Layer&#xa;(state/)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="325" y="450" width="200" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="6" value="Сервисный слой" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="310" y="200" width="140" height="40" as="geometry" />
+        <mxCell id="workflow_layer" value="Workflow Layer&#xa;(steps/)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="550" y="320" width="200" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="DataService" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="190" y="280" width="100" height="40" as="geometry" />
+        <mxCell id="charts_module" value="charts.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="30" y="200" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="PreprocessingService" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="320" y="280" width="120" height="40" as="geometry" />
+        <mxCell id="navigation_module" value="navigation.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="170" y="200" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="9" value="TransformationService" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="450" y="280" width="140" height="40" as="geometry" />
+        <mxCell id="auth_ui_module" value="auth.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="30" y="250" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="10" value="AuthService" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="590" y="360" width="100" height="40" as="geometry" />
+        <mxCell id="forecasting_module" value="forecasting/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="170" y="250" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="Модели прогнозирования" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="290" y="360" width="180" height="40" as="geometry" />
+        <mxCell id="xgboost_model" value="xgboost_model.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="500" y="150" width="130" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="Визуализация и результаты" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="290" y="450" width="180" height="40" as="geometry" />
+        <mxCell id="sarima_model" value="sarima_model.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="650" y="150" width="130" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="2" target="3" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="catboost_model" value="catboost_model.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="500" y="100" width="130" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="3" target="4" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="lstm_model" value="lstm_model.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="650" y="100" width="130" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="4" target="5" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="data_service" value="data_service.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="30" y="400" width="130" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="4" target="6" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="preprocessing_service" value="preprocessing_service.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="170" y="400" width="150" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="6" target="7" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="transformation_service" value="transformation_service.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="30" y="450" width="150" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="6" target="8" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="auth_service" value="auth_service.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="190" y="450" width="130" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="6" target="9" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="session_module" value="session.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="500" y="540" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="6" target="10" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="upload_step" value="step_upload.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="520" y="400" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="7" target="11" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="240" y="340" />
-              <mxPoint x="380" y="340" />
-            </Array>
+        <mxCell id="preprocessing_step" value="step_preprocessing.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="660" y="400" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="transformation_step" value="step_transformation.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="520" y="450" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="forecasting_step" value="step_forecasting.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="670" y="450" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase" value="Supabase&#xa;(Authentication &amp; Storage)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="325" y="600" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="comp_to_services" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="presentation_layer" target="business_logic_layer" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="8" target="11" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="9" target="11" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="520" y="340" />
-              <mxPoint x="380" y="340" />
-            </Array>
+        <mxCell id="comp_to_models" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" parent="1" source="presentation_layer" target="models_layer" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="10" target="11" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="workflow_to_comp" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" parent="1" source="workflow_layer" target="presentation_layer" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="11" target="12" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="workflow_to_models" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="workflow_layer" target="models_layer" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="workflow_to_services" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="workflow_layer" target="business_logic_layer" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="all_to_state" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="state_layer" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="425" y="280" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="state_to_supabase" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="state_layer" target="supabase" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="models_to_forecasting" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="models_layer" target="forecasting_module" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="680" y="520" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_flow" value="Data Flow" style="endArrow=classic;html=1;rounded=0;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="660" y="550" as="sourcePoint" />
+            <mxPoint x="760" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_bidirectional" value="Bidirectional Flow" style="endArrow=classic;startArrow=classic;html=1;rounded=0;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="660" y="580" as="sourcePoint" />
+            <mxPoint x="760" y="580" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

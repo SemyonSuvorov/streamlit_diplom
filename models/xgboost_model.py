@@ -55,39 +55,23 @@ class XGBoostModel(BaseModel):
             )
             self.model.fit(train_df.drop(columns=[target_col]), train_df[target_col])
             
-            # Use forecast method to predict test set
-            horizon = len(test_idx)
-            
-            # Override to use direct forecasting for cross-validation
-            old_approach = getattr(self.config, 'forecast_approach', 'recursive')
-            self.config.forecast_approach = 'direct'
-            
+            # Use predict method directly on test data instead of forecast
             try:
-                forecast_series, _ = self.forecast(train_df, horizon)
-                
-                # Calculate metrics
+                X_test = test_df.drop(columns=[target_col])
                 y_test = test_df[target_col].values
-                y_pred = forecast_series.values
-                
-                # Ensure same length
-                min_len = min(len(y_test), len(y_pred))
-                y_test = y_test[:min_len]
-                y_pred = y_pred[:min_len]
+                y_pred = self.model.predict(X_test)
                 
                 # Compute metrics
                 cv_metrics['mse'].append(mean_squared_error(y_test, y_pred))
                 cv_metrics['mae'].append(mean_absolute_error(y_test, y_pred))
                 cv_metrics['r2'].append(r2_score(y_test, y_pred))
                 
-                last_test_idx = test_idx[:min_len]
+                last_test_idx = test_idx
                 last_y_test = y_test
                 last_y_pred = y_pred
             except Exception as e:
                 print(f"Error in fold {i}: {e}")
                 continue
-            finally:
-                # Restore original approach
-                self.config.forecast_approach = old_approach
             
             if progress_callback is not None:
                 progress_callback(i+1, n_folds)
@@ -106,9 +90,9 @@ class XGBoostModel(BaseModel):
         if not feature_names:
             raise ValueError("Нет признаков для обучения модели. Добавьте признаки на этапе подготовки данных.")
         
-        train_size = int(len(df) * self.train_size)
-        train_df = df.iloc[:train_size].copy()
-        test_df = df.iloc[train_size:].copy()
+        #train_size = int(len(df) * self.train_size)
+        train_df = df
+        #test_df = df.iloc[train_size:].copy()
 
         if state.get('feature_df') is None:
             state.set('feature_df', df.copy())
@@ -121,43 +105,43 @@ class XGBoostModel(BaseModel):
         )
         self.model.fit(train_df.drop(columns=[target_col]), train_df[target_col])
         
-        # Use forecast method to predict test set
-        horizon = len(test_df)
+        # # Use forecast method to predict test set
+        # horizon = len(test_df)
         
-        # Override to use direct forecasting for evaluation
-        old_approach = getattr(self.config, 'forecast_approach', 'recursive')
-        self.config.forecast_approach = 'direct'
+        # # Override to use direct forecasting for evaluation
+        # old_approach = getattr(self.config, 'forecast_approach', 'recursive')
+        # self.config.forecast_approach = 'direct'
         
-        try:
-            forecast_series, _ = self.forecast(train_df, horizon)
+        # try:
+        #     forecast_series, _ = self.forecast(train_df, horizon)
             
-            # Calculate metrics
-            y_test = test_df[target_col].values
-            y_pred = forecast_series.values
+        #     # Calculate metrics
+        #     y_test = test_df[target_col].values
+        #     y_pred = forecast_series.values
             
-            # Ensure same length
-            min_len = min(len(y_test), len(y_pred))
-            y_test = y_test[:min_len]
-            y_pred = y_pred[:min_len]
+        #     # Ensure same length
+        #     min_len = min(len(y_test), len(y_pred))
+        #     y_test = y_test[:min_len]
+        #     y_pred = y_pred[:min_len]
             
-            metrics = {
-                'mse': mean_squared_error(y_test, y_pred),
-                'mae': mean_absolute_error(y_test, y_pred),
-                'r2': r2_score(y_test, y_pred)
-            }
+        #     metrics = {
+        #         'mse': mean_squared_error(y_test, y_pred),
+        #         'mae': mean_absolute_error(y_test, y_pred),
+        #         'r2': r2_score(y_test, y_pred)
+        #     }
             
-            self.test_data = {
-                'dates': test_df.index[:min_len],
-                'actual': y_test,
-                'predicted': y_pred
-            }
-        finally:
-            # Restore original approach
-            self.config.forecast_approach = old_approach
+        #     self.test_data = {
+        #         'dates': test_df.index[:min_len],
+        #         'actual': y_test,
+        #         'predicted': y_pred
+        #     }
+        # finally:
+        #     # Restore original approach
+        #     self.config.forecast_approach = old_approach
             
         self.feature_names = feature_names
         self._is_fitted = True
-        return self.model, metrics
+        return self.model#, metrics
     
     def plot_test_predictions(self) -> go.Figure:
         """Построить график прогноз vs факт для последнего тестового фолда после cross_validate"""

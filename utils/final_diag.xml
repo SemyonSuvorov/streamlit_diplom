@@ -1,0 +1,214 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.6">
+  <diagram id="xKTtGBuTP3AM2VEvTlIZ" name="Страница — 1">
+    <mxGraphModel dx="1426" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="system_boundary" value="Система прогнозирования временных рядов" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=16;fontStyle=1;verticalAlign=top;dashed=1;dashPattern=5 5;arcSize=4;" parent="1" vertex="1">
+          <mxGeometry x="40" y="40" width="1120" height="800" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_layer" value="Слой пользовательского интерфейса" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="80" y="80" width="1040" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="navigation" value="Навигация&#xa;(navigation.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="120" y="120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_ui" value="Аутентификация&#xa;(auth.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="260" y="120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="step_upload_ui" value="Загрузка данных&#xa;(step_upload)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="400" y="120" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="step_preprocess_ui" value="Предобработка&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;(step_preprocessing)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="530" y="120" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="step_transform_ui" value="Трансформация&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;(step_transformation)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="660" y="120" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="step_forecast_ui" value="Прогнозирование&#xa;(step_forecasting)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="790" y="120" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="charts" value="Визуализация&#xa;(charts.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="920" y="120" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="forecasting_layer" value="Компоненты прогнозирования" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="50" y="280" width="520" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="model_selection" value="Выбор модели&#xa;(model_selection)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="60" y="320" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="training_tab" value="Обучение&#xa;(training_tab)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="190" y="320" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="forecast_tab" value="Прогноз&#xa;(forecast_tab)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="320" y="320" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="model_registry" value="Реестр моделей&#xa;(model_registry)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="450" y="320" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="models_layer" value="Слой моделей машинного обучения" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="670" y="280" width="480" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="xgboost" value="XGBoost&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="690" y="320" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sarima" value="SARIMA&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="810" y="320" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="catboost" value="CatBoost&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="940" y="320" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="lstm" value="LSTM&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="1050" y="320" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="business_layer" value="Слой бизнес-логики" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="80" y="450" width="1040" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="data_service" value="Управление данными&#xa;(data_service)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc99;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="120" y="490" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="preprocessing_service" value="Предобработка&#xa;(preprocessing_service)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc99;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="290" y="490" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="transformation_service" value="Трансформация&#xa;(transformation_service)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc99;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="460" y="490" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_service" value="Аутентификация&#xa;(auth_service)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc99;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="630" y="490" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="state_layer" value="Управление состоянием" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="800" y="450" width="320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="session_state" value="Состояние сессии&#xa;(session.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="840" y="490" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="external_layer" value="Внешние системы" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="80" y="620" width="1040" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase" value="Supabase&#xa;База данных и аутентификация" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="120" y="670" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="streamlit" value="Streamlit Framework&#xa;Веб-интерфейс" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="390" y="670" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="plotly" value="Plotly&#xa;Интерактивная визуализация" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="660" y="670" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ml_libs" value="ML Библиотеки&#xa;(XGBoost, LSTM, etc.)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="920" y="670" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_to_forecasting" value="Конфигурация&#xa;моделей" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" source="step_forecast_ui" target="forecasting_layer" edge="1">
+          <mxGeometry x="-0.0105" y="-20" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="845" y="250" />
+              <mxPoint x="440" y="250" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="forecasting_to_models" value="Запуск&#xa;обучения" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="forecasting_layer" target="models_layer" edge="1">
+          <mxGeometry x="0.2727" y="-20" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ui_to_business" value="Запросы на&#xa;обработку данных" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="ui_layer" target="business_layer" edge="1">
+          <mxGeometry x="0.7273" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="business_to_state" value="Сохранение&#xa;результатов" style="endArrow=classic;html=1;rounded=0;exitX=0.612;exitY=-0.033;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;exitPerimeter=0;" parent="1" source="business_layer" target="state_layer" edge="1">
+          <mxGeometry x="0.0002" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="716" y="420" />
+              <mxPoint x="880" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="models_to_business" value="Результаты&#xa;прогнозов" style="endArrow=classic;html=1;rounded=0;entryX=0.722;entryY=-0.017;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" parent="1" source="models_layer" target="state_layer" edge="1">
+          <mxGeometry x="-0.1909" y="35" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1060" y="420" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="state_to_charts" value="Данные для&#xa;визуализации" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="state_layer" target="charts" edge="1">
+          <mxGeometry x="0.4333" y="29" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1140" y="510" />
+              <mxPoint x="1140" y="230" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="state_to_supabase" value="Персистентное&#xa;хранение" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="state_layer" target="supabase" edge="1">
+          <mxGeometry x="-0.302" y="20" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="880" y="600" />
+              <mxPoint x="300" y="600" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="auth_to_supabase" value="Аутентификация" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="auth_service" target="supabase" edge="1">
+          <mxGeometry x="0.3808" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="700" y="580" />
+              <mxPoint x="500" y="580" />
+              <mxPoint x="220" y="580" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ui_to_streamlit" value="Рендеринг интерфейса" style="endArrow=classic;html=1;rounded=0;exitX=0.222;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitPerimeter=0;" parent="1" source="ui_layer" target="streamlit" edge="1">
+          <mxGeometry x="0.0206" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="310" y="420" />
+              <mxPoint x="440" y="420" />
+              <mxPoint x="440" y="640" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="charts_to_plotly" value="Создание графиков" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="charts" target="plotly" edge="1">
+          <mxGeometry x="0.1497" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1000" y="610" />
+              <mxPoint x="780" y="610" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="models_to_libs" value="Использование&#xa;алгоритмов" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="models_layer" target="ml_libs" edge="1">
+          <mxGeometry x="0.5453" y="-7" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="450" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="910" y="600" />
+              <mxPoint x="1000" y="650" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

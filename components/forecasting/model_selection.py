@@ -7,24 +7,26 @@ def show_model_selection_tab() -> tuple[ModelConfig, ModelType]:
     """UI выбора модели и параметров. Возвращает config и тип модели."""
     st.markdown("### Выбор модели и параметров")
     
-    # 1. Целевая переменная
-    numeric_cols = state.get('filtered_df').select_dtypes(include='number').columns.tolist()
-    target_col = st.selectbox(
-        "Целевая переменная",
-        numeric_cols,
-        index=numeric_cols.index(state.get('target_col')) if state.get('target_col') in numeric_cols else 0,
-        key="forecast_target_col"
-    )
+    col1, col2 = st.columns(2)
+    with col1:
+        # 1. Целевая переменная
+        numeric_cols = state.get('filtered_df').select_dtypes(include='number').columns.tolist()
+        target_col = st.selectbox(
+            "Целевая переменная",
+            numeric_cols,
+            index=numeric_cols.index(state.get('target_col')) if state.get('target_col') in numeric_cols else 0,
+            key="forecast_target_col"
+        )
 
-    # 2. Размер обучающей выборки (универсально)
-    train_size = st.slider(
-        "Размер обучающей выборки",
-        min_value=0.5,
-        max_value=0.9,
-        value=0.8,
-        step=0.1,
-        key="training_train_size"
-    )
+    with col2:
+        train_size = st.slider(
+            "Размер обучающей выборки",
+            min_value=0.5,
+            max_value=0.9,
+            value=0.8,
+            step=0.1,
+            key="training_train_size"
+        )
 
     st.markdown("---")
 
@@ -111,7 +113,7 @@ def show_model_selection_tab() -> tuple[ModelConfig, ModelType]:
                 key=f"{model_type.value.lower()}_learning_rate"
             )
     # LSTM, GRU, TRANSFORMER
-    elif model_type in [ModelType.LSTM, ModelType.GRU, ModelType.TRANSFORMER]:
+    elif model_type == ModelType.LSTM:
         st.markdown("#### Параметры нейронной сети")
         config.epochs = st.number_input(
             "Эпохи",
@@ -148,6 +150,6 @@ def show_model_selection_tab() -> tuple[ModelConfig, ModelType]:
                 type=["h5", "pth", "ckpt", "pkl"],
                 key="forecast_uploaded_weights"
             )
-    # Другие модели (например, Prophet, Random Forest и т.д.) можно добавить аналогично
+
 
     return config, model_type 

@@ -32,36 +32,8 @@ def get_model_description(model_type: ModelType) -> str:
         - Хорошо работает с нелинейными паттернами
         - Требует большого количества данных
         """,
-        ModelType.GRU: """
-        GRU (Gated Recurrent Unit) - упрощенная версия LSTM.
-        Преимущества:
-        - Меньше параметров, чем у LSTM
-        - Быстрее обучается
-        - Хорошо работает с короткими последовательностями
-        """,
-        ModelType.TRANSFORMER: """
-        Transformer - архитектура на основе механизма внимания.
-        Особенности:
-        - Параллельная обработка последовательностей
-        - Учет глобальных зависимостей
-        - Высокая точность на больших наборах данных
-        """,
-        ModelType.PROPHET: """
-        Prophet - модель для прогнозирования временных рядов от Facebook.
-        Преимущества:
-        - Учет сезонности и трендов
-        - Устойчивость к выбросам
-        - Простота настройки
-        """,
-        ModelType.RANDOM_FOREST: """
-        Random Forest - ансамбль деревьев решений.
-        Особенности:
-        - Устойчивость к переобучению
-        - Работа с нелинейными зависимостями
-        - Интерпретируемость результатов
-        """,
         ModelType.SARIMA: """
-        SARIMAX (Seasonal ARIMA with eXogenous regressors) - расширение ARIMA, учитывающее сезонность.
+        SARIMA (Seasonal ARIMA) - расширение ARIMA, учитывающее сезонность.
         Состоит из:
         - AR (p) - авторегрессия
         - I (d) - интегрирование
@@ -186,6 +158,30 @@ def show_training_tab():
                     model = ModelFactory.create_model(model_type, config)
                     model.fit(X_df[config.target_col])
                     cv_metrics = model.cross_validate(X_df[[config.target_col]], config.target_col)
+                    
+                    # Display SARIMA parameters in a compact format
+                    try:
+                        # Get parameters from the model - adjust attribute names if needed
+                        order = model.model.order if hasattr(model.model, 'order') else getattr(model.model, '_order', None)
+                        seasonal_order = model.model.seasonal_order if hasattr(model.model, 'seasonal_order') else getattr(model.model, '_seasonal_order', None)
+                        
+                        params_col1, params_col2 = st.columns(2)
+                        
+                        with params_col1:
+                            st.markdown("##### Параметры SARIMA")
+                            param_text = ""
+                            
+                            if order:
+                                p, d, q = order
+                                param_text += f"**Несезонные:** p={p}, d={d}, q={q}"
+                                
+                            if seasonal_order:
+                                P, D, Q, s = seasonal_order
+                                param_text += f"<br>**Сезонные:** P={P}, D={D}, Q={Q}, s={s}"
+                                
+                            st.markdown(param_text, unsafe_allow_html=True)
+                    except Exception as e:
+                        st.warning(f"Не удалось отобразить параметры SARIMA: {str(e)}")
             else:
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -194,10 +190,36 @@ def show_training_tab():
                     progress_bar.progress(progress)
                     status_text.text(f"Прогресс: {int(progress * 100)}%")
                 model = ModelFactory.create_model(model_type, config)
-                # Сначала обучаем модель
-                model.fit(X_df, config.target_col, progress_callback=update_progress)
-                # Затем делаем кросс-валидацию
-                cv_metrics = model.cross_validate(X_df, config.target_col, progress_callback=update_progress)
+                
+                # Special handling for LSTM model
+                if model_type == ModelType.LSTM:
+                    # Perform feature selection based on correlation with target
+                    corr_with_target = X_df.corr()[config.target_col].abs().sort_values(ascending=False)
+                    top_features = corr_with_target.head(min(10, len(corr_with_target))).index.tolist()
+                    # Always include target variable
+                    if config.target_col not in top_features:
+                        top_features.append(config.target_col)
+                    
+                    # Only use top correlated features to avoid overwhelming the LSTM
+                    X_df_lstm = X_df[top_features].copy()
+                    
+                    # Add lag features especially for LSTM
+                    for lag in range(1, 4):  # Add 3 lag features
+                        X_df_lstm[f'{config.target_col}_lag{lag}'] = X_df_lstm[config.target_col].shift(lag)
+                    
+                    # Handle NaNs from shifts
+                    X_df_lstm = X_df_lstm.dropna()
+                    
+                    # Save the feature list so we can use exactly these features during prediction
+                    state.set('lstm_features', list(X_df_lstm.columns))
+                    
+                    
+                    model.fit(X_df_lstm, config.target_col, progress_callback=update_progress)
+                    cv_metrics = model.cross_validate(X_df_lstm, config.target_col, progress_callback=update_progress)
+                else:
+                    # Standard flow for other models
+                    model.fit(X_df, config.target_col, progress_callback=update_progress)
+                    cv_metrics = model.cross_validate(X_df, config.target_col, progress_callback=update_progress)
 
             st.markdown("### Основные метрики")
             if isinstance(cv_metrics, dict) and all(isinstance(v, list) for v in cv_metrics.values()):

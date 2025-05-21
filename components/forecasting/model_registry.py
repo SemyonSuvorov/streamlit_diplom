@@ -7,10 +7,6 @@ class ModelType(Enum):
     XGBOOST = "XGBoost"
     CATBOOST = "CatBoost"
     LSTM = "LSTM"
-    GRU = "GRU"
-    TRANSFORMER = "Transformer"
-    PROPHET = "Prophet"
-    RANDOM_FOREST = "Random Forest"
 
 class ModelRegistry:
     """Registry for managing model implementations"""

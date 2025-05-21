@@ -1,0 +1,113 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.6">
+  <diagram id="NC7_pPFfR11pUnZBah_7" name="Страница — 1">
+    <mxGraphModel dx="2146" dy="727" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="base_model" value="&lt;&lt;abstract&gt;&gt;&#xa;BaseModel&#xa;----------------------------------&#xa;# config: ModelConfig&#xa;# _is_fitted: bool&#xa;----------------------------------&#xa;+ __init__(config: ModelConfig)&#xa;+ is_fitted(): bool&#xa;+ {abstract} fit(ts: pd.Series, progress_callback=None): Tuple[Any, Dict]&#xa;+ {abstract} forecast(ts: pd.Series, horizon: int): Tuple[pd.Series, Optional[pd.DataFrame]]&#xa;+ {abstract} get_metrics(): Dict[str, float]&#xa;+ {abstract} plot_forecast(ts: pd.Series, forecast: pd.Series, conf_int=None): Any" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-100" y="270" width="520" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="model_config" value="ModelConfig&#xa;----------------------------------&#xa;+ target_col: str&#xa;+ window_size: Optional[int]&#xa;+ train_size: Optional[float]&#xa;+ n_splits: Optional[int]&#xa;+ forecast_approach: Optional[str]&#xa;----------------------------------" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="40" y="90" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="model_type" value="&amp;lt;&amp;gt;&lt;br&gt;ModelType&lt;br&gt;----------------------------------&lt;br&gt;SARIMA&lt;br&gt;XGBOOST&lt;br&gt;CATBOOST&lt;br&gt;LSTM" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="620" y="140" width="240" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="model_registry" value="ModelRegistry&#xa;----------------------------------&#xa;- _models: Dict[ModelType, type]&#xa;- _configs: Dict[ModelType, Dict]&#xa;----------------------------------&#xa;+ {static} register(model_type: ModelType, model_class: type, default_config: Dict)&#xa;+ {static} get_model(model_type: ModelType, config: ModelConfig): BaseModel&#xa;+ {static} get_default_config(model_type: ModelType): Dict" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="480" y="290" width="520" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="model_factory" value="ModelFactory&#xa;----------------------------------&#xa;+ {static} create_model(model_type: ModelType, config: ModelConfig): BaseModel" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="480" y="460" width="520" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="xgboost_model" value="XGBoostModel&#xa;----------------------------------&#xa;+ train_size: float&#xa;+ n_splits: int&#xa;+ n_estimators: int&#xa;+ max_depth: int&#xa;+ learning_rate: float&#xa;+ random_state: int&#xa;+ model: xgb.XGBRegressor&#xa;+ feature_names: List[str]&#xa;----------------------------------&#xa;+ fit(ts: pd.DataFrame, target_col: str, progress_callback=None): Tuple[Any, Dict]&#xa;+ forecast(ts: pd.DataFrame, horizon: int, progress_callback=None): Tuple[pd.Series, None]&#xa;+ cross_validate(df: pd.DataFrame, target_col: str, progress_callback=None): Dict[str, List[float]]&#xa;+ get_metrics(): Dict[str, float]&#xa;+ plot_test_predictions(): go.Figure&#xa;+ plot_forecast(ts: pd.Series, forecast: pd.Series, conf_int=None): Any" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-100" y="500" width="520" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="sarima_model" value="SARIMAModel&#xa;----------------------------------&#xa;(Similar structure to XGBoostModel)&#xa;----------------------------------" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-370" y="220" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="catboost_model" value="CatBoostModel&#xa;----------------------------------&#xa;(Similar structure to XGBoostModel)&#xa;----------------------------------" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-370" y="320" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="lstm_model" value="LSTMModel&#xa;----------------------------------&#xa;(Similar structure to XGBoostModel)&#xa;----------------------------------" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-370" y="420" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="training_tab" value="training_tab.py&#xa;----------------------------------&#xa;+ show_training_tab()&#xa;----------------------------------" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-460" y="800" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="forecast_tab" value="forecast_tab.py&#xa;----------------------------------&#xa;+ show_forecast_tab()&#xa;+ inverse_transform_forecast(forecast_series, conf_int=None): Tuple" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="-100" y="800" width="520" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="model_selection" value="model_selection.py&#xa;----------------------------------&#xa;+ show_model_selection_tab(): Tuple[ModelConfig, ModelType]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;spacingRight=4;" parent="1" vertex="1">
+          <mxGeometry x="480" y="800" width="520" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="config_to_basemodel" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="model_config" target="base_model" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="410" as="sourcePoint" />
+            <mxPoint x="560" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xgboost_inheritance" value="" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="xgboost_model" target="base_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="450" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sarima_inheritance" value="" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="sarima_model" target="base_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="550" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="catboost_inheritance" value="" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="catboost_model" target="base_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="550" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lstm_inheritance" value="" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="lstm_model" target="base_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="550" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="registry_uses_modeltype" value="" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="model_registry" target="model_type" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="550" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="registry_creates_models" value="" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="model_registry" target="base_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="550" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="factory_uses_registry" value="" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="model_factory" target="model_registry" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="430" as="sourcePoint" />
+            <mxPoint x="550" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="training_tab_uses_models" value="" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;" parent="1" source="training_tab" target="xgboost_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="740" as="sourcePoint" />
+            <mxPoint x="550" y="740" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="forecast_tab_uses_models" value="" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="forecast_tab" target="xgboost_model" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="740" as="sourcePoint" />
+            <mxPoint x="550" y="740" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="model_selection_uses_registry" value="" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="model_selection" target="model_factory" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="390" y="740" as="sourcePoint" />
+            <mxPoint x="810" y="530" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

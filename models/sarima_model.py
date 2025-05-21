@@ -12,6 +12,7 @@ class SARIMAModel(BaseModel):
         self.train_size = config.__dict__.get('train_size', 0.8)
         self.n_splits = config.__dict__.get('n_splits', 5)
         self.seasonal_period = config.__dict__.get('seasonal_period', 12)
+        self.model = None
         self.best_model = None
         self.metrics = {}
         self.test_data = None
@@ -46,31 +47,37 @@ class SARIMAModel(BaseModel):
                 train,
                 start_p=1, start_q=1,
                 test='adf',
-                max_p=3, max_q=3,
+                max_p=2, max_q=2,
                 m=m,    
                 start_P=0, seasonal=True,
                 d=None, D=1,
                 trace=False,
                 error_action='ignore',
                 suppress_warnings=True,
-                stepwise=True
+                stepwise=True,
+                maxiter=10,          # Limit maximum iterations for parameter estimation
+                information_criterion='aic',  # Use AIC for model selection
+                max_order=5,         # Maximum total (p+q+P+Q) order
+                n_jobs=-1,           # Use all available CPU cores
+                max_P=2, max_Q=3    # Limit seasonal parameters
             )
+            self.model = model
             self.best_model = model
             self._is_fitted = True
-            forecast = model.predict(n_periods=len(test))
-            forecast = forecast * self.data_std + self.data_mean
-            test_orig = test * self.data_std + self.data_mean
-            self.metrics = {
-                'mse': mean_squared_error(test_orig, forecast),
-                'mae': mean_absolute_error(test_orig, forecast),
-                'r2': r2_score(test_orig, forecast)
-            }
-            self.test_data = {
-                'dates': test.index,
-                'actual': test_orig,
-                'predicted': forecast
-            }
-            return self.best_model, {'aic': getattr(self.best_model, 'aic', None)}
+            # forecast = model.predict(n_periods=len(test))
+            # forecast = forecast * self.data_std + self.data_mean
+            # test_orig = test * self.data_std + self.data_mean
+            # self.metrics = {
+            #     'mse': mean_squared_error(test_orig, forecast),
+            #     'mae': mean_absolute_error(test_orig, forecast),
+            #     'r2': r2_score(test_orig, forecast)
+            # }
+            # self.test_data = {
+            #     'dates': test.index,
+            #     'actual': test_orig,
+            #     'predicted': forecast
+            # }
+            return self.best_model#, {'aic': getattr(self.best_model, 'aic', None)}
         except Exception as e:
             raise ValueError(f"Ошибка обучения auto_arima: {e}")
 
@@ -82,56 +89,74 @@ class SARIMAModel(BaseModel):
         tscv = TimeSeriesSplit(n_splits=self.n_splits)
         mse_scores, mae_scores, r2_scores = [], [], []
         
+        # Ensure we have a fitted model first
+        if self.model is None or not self._is_fitted:
+            raise ValueError("Model must be fitted first. Call fit() before cross_validate().")
+        
+        last_test_actual = None
+        last_test_pred = None
+        last_test_dates = None
+        
         for i, (train_idx, test_idx) in enumerate(tscv.split(ts)):
             train_ts = ts.iloc[train_idx]
             test_ts = ts.iloc[test_idx]
             
             try:
-                # Важно: подготовка только на тренировочных данных
-                train_ts_scaled = self._prepare_ts(train_ts.copy())
+                # Подготовка данных для прогноза
+                self._prepare_ts(train_ts.copy())
                 
-                # Обучение модели если нужно
-                if self.best_model is None or i > 0:  # Переобучаем модель для каждого фолда
-                    m = self.seasonal_period if self.seasonal_period else 1
-                    model = pm.auto_arima(
-                        train_ts_scaled,
-                        start_p=1, start_q=1,
-                        test='adf',
-                        max_p=3, max_q=3,
-                        m=m,    
-                        start_P=0, seasonal=True,
-                        d=None, D=1,
-                        trace=False,
-                        error_action='ignore',
-                        suppress_warnings=True,
-                        stepwise=True
+                # Прогноз используя только существующую модель (self.model)
+                forecast_series, _ = self.forecast(train_ts, len(test_ts))
+                
+                # Handle date alignment issues - make sure indices match exactly
+                aligned_forecast = forecast_series.copy()
+                if not all(idx in test_ts.index for idx in aligned_forecast.index):
+                    # Reindex forecast to match test data exactly
+                    aligned_forecast = pd.Series(
+                        forecast_series.values, 
+                        index=test_ts.index
                     )
-                    self.best_model = model
-                    self._is_fitted = True
                 
-                # Прогноз
-                forecast_values, _ = self.forecast(train_ts, len(test_ts))
+                # Calculate metrics
+                mse = mean_squared_error(test_ts, aligned_forecast)
+                mae = mean_absolute_error(test_ts, aligned_forecast)
+                r2 = r2_score(test_ts, aligned_forecast)
                 
-                # Вычисление метрик на оригинальных данных (без масштабирования)
-                mse_scores.append(mean_squared_error(test_ts, forecast_values))
-                mae_scores.append(mean_absolute_error(test_ts, forecast_values))
-                r2_scores.append(r2_score(test_ts, forecast_values))
+                # Save metrics
+                mse_scores.append(mse)
+                mae_scores.append(mae)
+                r2_scores.append(r2)
                 
-                self.test_data = {
-                    'dates': test_ts.index,
-                    'actual': test_ts,
-                    'predicted': forecast_values
-                }
+                # Save the last fold's data for plotting
+                if i == self.n_splits - 1 or i == len(list(tscv.split(ts))) - 1:
+                    last_test_actual = test_ts
+                    last_test_pred = aligned_forecast
+                    last_test_dates = test_ts.index
+                
+                if progress_callback:
+                    progress_callback(i+1, self.n_splits)
+            except Exception as e:
+                print(f"Ошибка в фолде {i}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+        
+        # Save the last fold's data for plotting
+        if last_test_actual is not None and last_test_pred is not None:
+            self.test_data = {
+                'dates': last_test_dates,
+                'actual': last_test_actual,
+                'predicted': last_test_pred
+            }
+            
+            # Also save the last metrics
+            if mse_scores and mae_scores and r2_scores:
                 self.metrics = {
                     'mse': mse_scores[-1],
                     'mae': mae_scores[-1],
                     'r2': r2_scores[-1]
                 }
-                if progress_callback:
-                    progress_callback(i+1, self.n_splits)
-            except Exception as e:
-                print(f"Ошибка в фолде {i}: {e}")
-                continue
+        
         return {'mse': mse_scores, 'mae': mae_scores, 'r2': r2_scores}
 
     def get_metrics(self) -> Dict[str, float]:
@@ -166,10 +191,10 @@ class SARIMAModel(BaseModel):
         return fig
 
     def forecast(self, ts: pd.Series, horizon: int) -> Tuple[pd.Series, Optional[pd.DataFrame]]:
-        if self.best_model is None or not self._is_fitted:
+        if self.model is None or not self._is_fitted:
             raise ValueError("Model has not been trained yet. Call fit() first.")
         ts = self._prepare_ts(ts)
-        forecast_values, conf_int = self.best_model.predict(n_periods=horizon, return_conf_int=True)
+        forecast_values, conf_int = self.model.predict(n_periods=horizon, return_conf_int=True)
         forecast_values = forecast_values * self.data_std + self.data_mean
         conf_int = conf_int * self.data_std + self.data_mean
         last_date = ts.index[-1]

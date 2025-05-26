@@ -7,6 +7,7 @@ class ModelType(Enum):
     XGBOOST = "XGBoost"
     CATBOOST = "CatBoost"
     LSTM = "LSTM"
+    DMEN = "DMEN"
 
 class ModelRegistry:
     """Registry for managing model implementations"""

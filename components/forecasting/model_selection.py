@@ -151,5 +151,90 @@ def show_model_selection_tab() -> tuple[ModelConfig, ModelType]:
                 key="forecast_uploaded_weights"
             )
 
+    # DMEN
+    elif model_type == ModelType.DMEN:
+        st.markdown("#### Параметры DMEN (Dynamic Mutual Enhancement Network)")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            config.window_size = st.number_input(
+                "Размер окна для динамических весов",
+                min_value=10,
+                max_value=100,
+                value=default_config.get('window_size', 30),
+                key="dmen_window_size"
+            )
+            config.n_estimators = st.number_input(
+                "Количество деревьев (XGBoost/CatBoost)",
+                min_value=10,
+                max_value=1000,
+                value=default_config.get('n_estimators', 100),
+                key="dmen_n_estimators"
+            )
+            config.max_depth = st.number_input(
+                "Максимальная глубина деревьев",
+                min_value=1,
+                max_value=20,
+                value=default_config.get('max_depth', 6),
+                key="dmen_max_depth"
+            )
+            config.epochs = st.number_input(
+                "Эпохи для LSTM",
+                min_value=10,
+                max_value=200,
+                value=default_config.get('epochs', 50),
+                key="dmen_epochs"
+            )
+        
+        with col2:
+            config.learning_rate = st.number_input(
+                "Скорость обучения",
+                min_value=0.001,
+                max_value=1.0,
+                value=default_config.get('learning_rate', 0.01),
+                step=0.001,
+                key="dmen_learning_rate"
+            )
+            config.alpha = st.number_input(
+                "Вес производительности (α)",
+                min_value=0.0,
+                max_value=2.0,
+                value=default_config.get('alpha', 1.0),
+                step=0.1,
+                key="dmen_alpha"
+            )
+            config.beta = st.number_input(
+                "Вес вариабельности (β)",
+                min_value=0.0,
+                max_value=2.0,
+                value=default_config.get('beta', 0.5),
+                step=0.1,
+                key="dmen_beta"
+            )
+            config.gamma = st.number_input(
+                "Вес консистентности (γ)",
+                min_value=0.0,
+                max_value=2.0,
+                value=default_config.get('gamma', 0.5),
+                step=0.1,
+                key="dmen_gamma"
+            )
+        
+        config.n_splits = st.number_input(
+            "Количество фолдов для кросс-валидации",
+            min_value=2,
+            max_value=10,
+            value=default_config.get('n_splits', 5),
+            key="dmen_n_splits"
+        )
+        
+        st.markdown("##### Описание параметров DMEN:")
+        st.markdown("""
+        - **α (альфа)**: Вес производительности модели в расчете надежности
+        - **β (бета)**: Вес вариабельности ошибок (штраф за нестабильность)
+        - **γ (гамма)**: Вес консистентности прогнозов с истинными значениями
+        - **Размер окна**: Количество последних наблюдений для расчета динамических весов
+        """)
+
 
     return config, model_type 

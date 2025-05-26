@@ -1,5 +1,7 @@
 import pandas as pd
-import pmdarima as pm
+import numpy as np
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+import optuna
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -20,6 +22,7 @@ class SARIMAModel(BaseModel):
         self.data_mean = 0
         self.data_std = 1
         self._is_fitted = False
+        self.best_params = None
 
     def _prepare_ts(self, ts):
         if not isinstance(ts.index, pd.DatetimeIndex):
@@ -36,50 +39,77 @@ class SARIMAModel(BaseModel):
             ts = ts.interpolate(method='time')
         return ts
 
-    def fit(self, ts: pd.Series, progress_callback=None, n_trials: int = 15) -> Tuple[Any, Dict]:
+    def _objective(self, trial, train):
+        # Define the hyperparameter search space with more focused ranges
+        p = trial.suggest_int('p', 0, 2)  
+        d = trial.suggest_int('d', 0, 2)
+        q = trial.suggest_int('q', 0, 2)  
+        P = trial.suggest_int('P', 0, 2)
+        D = trial.suggest_int('D', 0, 2)
+        Q = trial.suggest_int('Q', 0, 2)  
+        
+        # Create a unique key for caching
+        param_key = f"p{p}_d{d}_q{q}_P{P}_D{D}_Q{Q}"
+        
+        # Check if we've already tried these parameters
+        if hasattr(self, '_param_cache') and param_key in self._param_cache:
+            return self._param_cache[param_key]
+        
+        try:
+            model = SARIMAX(
+                train,
+                order=(p, d, q),
+                seasonal_order=(P, D, Q, self.seasonal_period),
+                enforce_stationarity=False,
+                enforce_invertibility=False
+            )
+            
+            # Add early stopping by checking AIC during fitting
+            results = model.fit(disp=False, maxiter=50)  # Limit iterations
+            
+            # Cache the result
+            if not hasattr(self, '_param_cache'):
+                self._param_cache = {}
+            self._param_cache[param_key] = results.aic
+            
+            return results.aic
+        except:
+            # Cache failed attempts too
+            if not hasattr(self, '_param_cache'):
+                self._param_cache = {}
+            self._param_cache[param_key] = float('inf')
+            return float('inf')
+
+    def fit(self, ts: pd.Series, progress_callback=None, n_trials: int = 5) -> Tuple[Any, Dict]:
         ts = self._prepare_ts(ts)
         train_size = int(len(ts) * self.train_size)
         train = ts[:train_size]
         test = ts[train_size:]
+        
         try:
-            m = self.seasonal_period if self.seasonal_period else 1
-            model = pm.auto_arima(
+            # Create and optimize the study
+            study = optuna.create_study(direction='minimize')
+            study.optimize(lambda trial: self._objective(trial, train), n_trials=n_trials)
+            
+            # Get the best parameters
+            self.best_params = study.best_params
+            
+            # Fit the model with best parameters
+            self.model = SARIMAX(
                 train,
-                start_p=1, start_q=1,
-                test='adf',
-                max_p=2, max_q=2,
-                m=m,    
-                start_P=0, seasonal=True,
-                d=None, D=1,
-                trace=False,
-                error_action='ignore',
-                suppress_warnings=True,
-                stepwise=True,
-                maxiter=10,          # Limit maximum iterations for parameter estimation
-                information_criterion='aic',  # Use AIC for model selection
-                max_order=5,         # Maximum total (p+q+P+Q) order
-                n_jobs=-1,           # Use all available CPU cores
-                max_P=2, max_Q=3    # Limit seasonal parameters
+                order=(self.best_params['p'], self.best_params['d'], self.best_params['q']),
+                seasonal_order=(self.best_params['P'], self.best_params['D'], 
+                              self.best_params['Q'], self.seasonal_period),
+                enforce_stationarity=False,
+                enforce_invertibility=False
             )
-            self.model = model
-            self.best_model = model
+            
+            self.best_model = self.model.fit(disp=False)
             self._is_fitted = True
-            # forecast = model.predict(n_periods=len(test))
-            # forecast = forecast * self.data_std + self.data_mean
-            # test_orig = test * self.data_std + self.data_mean
-            # self.metrics = {
-            #     'mse': mean_squared_error(test_orig, forecast),
-            #     'mae': mean_absolute_error(test_orig, forecast),
-            #     'r2': r2_score(test_orig, forecast)
-            # }
-            # self.test_data = {
-            #     'dates': test.index,
-            #     'actual': test_orig,
-            #     'predicted': forecast
-            # }
-            return self.best_model#, {'aic': getattr(self.best_model, 'aic', None)}
+            return self.best_model
+            
         except Exception as e:
-            raise ValueError(f"Ошибка обучения auto_arima: {e}")
+            raise ValueError(f"Ошибка обучения SARIMA: {e}")
 
     def cross_validate(self, df: pd.DataFrame, target_col: str, progress_callback=None) -> Dict[str, list]:
         ts = df[target_col]
@@ -194,9 +224,16 @@ class SARIMAModel(BaseModel):
         if self.model is None or not self._is_fitted:
             raise ValueError("Model has not been trained yet. Call fit() first.")
         ts = self._prepare_ts(ts)
-        forecast_values, conf_int = self.model.predict(n_periods=horizon, return_conf_int=True)
+        
+        # Use get_forecast instead of predict
+        forecast_result = self.best_model.get_forecast(steps=horizon)
+        forecast_values = forecast_result.predicted_mean
+        conf_int = forecast_result.conf_int()
+        
+        # Denormalize the forecast
         forecast_values = forecast_values * self.data_std + self.data_mean
         conf_int = conf_int * self.data_std + self.data_mean
+        
         last_date = ts.index[-1]
         if self.freq is None:
             if len(ts.index) > 1:
@@ -207,15 +244,18 @@ class SARIMAModel(BaseModel):
             forecast_index = pd.date_range(start=last_date, periods=horizon+1, freq=self.freq)[1:]
         except Exception:
             forecast_index = pd.date_range(start=last_date, periods=horizon+1, freq='D')[1:]
+            
         if isinstance(forecast_values, pd.Series) and isinstance(forecast_values.index, pd.DatetimeIndex):
             forecast_series = forecast_values.copy()
             forecast_series.index = forecast_index
         else:
             forecast_series = pd.Series(forecast_values, index=forecast_index)
+            
         conf_intervals = pd.DataFrame({
-            'lower': conf_int[:, 0],
-            'upper': conf_int[:, 1]
+            'lower': conf_int.iloc[:, 0],
+            'upper': conf_int.iloc[:, 1]
         }, index=forecast_index)
+        
         return forecast_series, conf_intervals
 
     def plot_forecast(self, ts: pd.Series, forecast: pd.Series, conf_int: Optional[pd.DataFrame] = None) -> Any:

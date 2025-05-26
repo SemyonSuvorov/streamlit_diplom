@@ -2,6 +2,7 @@ from models.xgboost_model import XGBoostModel
 from models.catboost_model import CatBoostModel
 from models.sarima_model import SARIMAModel
 from models.lstm_model import LSTMModel
+from models.dmen_model import DMENModel
 from components.forecasting.model_registry import ModelRegistry, ModelType
 
 def register_models():
@@ -64,5 +65,24 @@ def register_models():
             'hidden_size': 64,
             'num_layers': 2,
             'learning_rate': 0.001
+        }
+    )
+
+    # Register DMEN model
+    ModelRegistry.register(
+        ModelType.DMEN,
+        DMENModel,
+        {
+            'window_size': 30,
+            'train_size': 0.8,
+            'n_splits': 5,
+            'n_estimators': 100,
+            'max_depth': 6,
+            'learning_rate': 0.01,
+            'epochs': 50,
+            'batch_size': 32,
+            'alpha': 1.0,
+            'beta': 0.5,
+            'gamma': 0.5
         }
     ) 

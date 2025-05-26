@@ -106,6 +106,74 @@ def show_feature_importance_tab(model, model_type):
     """
     st.subheader("Важность признаков")
     
+    # Специальная обработка для DMEN
+    if model_type == ModelType.DMEN:
+        try:
+            # Отображаем динамические веса моделей
+            st.markdown("### Динамические веса моделей")
+            weights = model.get_model_weights()
+            
+            # График весов
+            fig_weights = model.plot_model_weights()
+            st.plotly_chart(fig_weights, use_container_width=True)
+            
+            # Таблица весов
+            weights_df = pd.DataFrame({
+                'Модель': list(weights.keys()),
+                'Вес': list(weights.values())
+            })
+            st.dataframe(weights_df)
+            
+            # Матрица взаимного усиления
+            st.markdown("### Матрица взаимного усиления (Θ)")
+            theta_matrix = model.get_theta_matrix()
+            
+            # Создаем DataFrame для лучшего отображения
+            theta_df = pd.DataFrame(
+                theta_matrix,
+                index=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM'],
+                columns=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM']
+            )
+            
+            # Тепловая карта матрицы
+            fig_theta = go.Figure(data=go.Heatmap(
+                z=theta_matrix,
+                x=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM'],
+                y=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM'],
+                colorscale='RdBu',
+                zmid=0,
+                text=np.round(theta_matrix, 3),
+                texttemplate="%{text}",
+                textfont={"size": 10},
+                hoverongaps=False
+            ))
+            
+            fig_theta.update_layout(
+                title="Матрица взаимного усиления между моделями",
+                xaxis_title="Модель-источник остатков",
+                yaxis_title="Модель-получатель усиления"
+            )
+            
+            st.plotly_chart(fig_theta, use_container_width=True)
+            
+            # Объяснение матрицы
+            st.markdown("""
+            ### Интерпретация матрицы взаимного усиления
+            
+            Матрица показывает, как остатки одной модели влияют на прогнозы другой:
+            
+            - **Положительные значения**: Остатки модели-источника улучшают прогнозы модели-получателя
+            - **Отрицательные значения**: Остатки модели-источника ухудшают прогнозы модели-получателя
+            - **Диагональ всегда равна 0**: Модель не может усиливать саму себя
+            
+            Значения обновляются динамически в процессе обучения на основе градиентного спуска.
+            """)
+            
+        except Exception as e:
+            st.error(f"Ошибка при отображении информации о DMEN: {str(e)}")
+        
+        return
+    
     # Проверяем, что модель является регрессионной (XGBoost или CatBoost)
     if model_type in [ModelType.XGBOOST, ModelType.CATBOOST]:
         try:
@@ -168,7 +236,7 @@ def show_feature_importance_tab(model, model_type):
         except Exception as e:
             st.error(f"Ошибка при отображении важности признаков: {str(e)}")
     else:
-        st.info("Информация о важности признаков доступна только для регрессионных моделей (XGBoost, CatBoost)")
+        st.info("Информация о важности признаков доступна только для регрессионных моделей (XGBoost, CatBoost) и DMEN")
 
 def show_forecast_tab():
     """Display forecast tab"""
@@ -264,45 +332,55 @@ def show_forecast_tab():
                 return
 
             if model_type != ModelType.SARIMA:
+                # Define target_col at the beginning
+                target_col = model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col')
+                
                 model_features = set(getattr(model, 'feature_names', []))
-                df_features = set([col for col in ts.columns if col != (model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col'))])
+                df_features = set([col for col in ts.columns if col != target_col])
                 missing_in_df = model_features - df_features
                 extra_in_df = df_features - model_features
                 
                 # If using LSTM model and missing lag features, create them
-                if model_type == ModelType.LSTM and any('_lag' in feature for feature in missing_in_df):
-                    
-                    # Identify the target column
-                    target_col = model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col')
-                    
-                    # Create the missing lag features
-                    for feature in list(missing_in_df):
-                        if '_lag' in feature:
-                            # Extract base feature name and lag number
-                            parts = feature.split('_lag')
-                            base_feature = '_'.join(parts[0].split('_'))
-                            lag_num = int(parts[1])
-                            
-                            # Create the lag feature
-                            if base_feature in ts.columns:
-                                ts[feature] = ts[base_feature].shift(lag_num)
-                                # Remove from missing features list
-                                missing_in_df.remove(feature)
-                    
-                    # Fill NaN values created by the lag
-                    ts = ts.fillna(method='bfill').fillna(method='ffill')
-                    
-                    # Update feature lists after creating lag features
-                    df_features = set([col for col in ts.columns if col != target_col])
-                    missing_in_df = model_features - df_features
-                    extra_in_df = df_features - model_features
-                
-                if missing_in_df or (extra_in_df and not all(col in ['dayofweek_sin', 'dayofweek_cos', 'day_of_week', 'month_sin', 'month_cos', 'quarter_sin', 'quarter_cos'] for col in extra_in_df)):
-                    st.error(f"Набор признаков в модели не совпадает с текущими признаками в данных!\n"
-                             f"\nОтсутствуют в данных: {', '.join(missing_in_df) if missing_in_df else 'нет'}"
-                             f"\nЛишние в данных: {', '.join(extra_in_df) if extra_in_df else 'нет'}\n"
-                             "Переобучите модель или вернитесь к шагу трансформации.")
-                    return
+                if model_type == ModelType.LSTM:
+                    # Get the features that were used during training
+                    lstm_features = state.get('lstm_features')
+                    if lstm_features is not None:
+                        # Only check for missing features that were used in training
+                        model_features = set(lstm_features)
+                        missing_in_df = model_features - df_features
+                        extra_in_df = set()  # Ignore extra features for LSTM
+                        
+                        # Create any missing lag features
+                        for feature in list(missing_in_df):
+                            if '_lag' in feature:
+                                parts = feature.split('_lag')
+                                base_feature = '_'.join(parts[0].split('_'))
+                                lag_num = int(parts[1])
+                                
+                                if base_feature in ts.columns:
+                                    ts[feature] = ts[base_feature].shift(lag_num)
+                                    missing_in_df.remove(feature)
+                        
+                        # Fill NaN values created by the lag
+                        ts = ts.fillna(method='bfill').fillna(method='ffill')
+                        
+                        # Update feature lists after creating lag features
+                        df_features = set([col for col in ts.columns if col != target_col])
+                        missing_in_df = model_features - df_features
+                    else:
+                        if missing_in_df or (extra_in_df and not all(col in ['dayofweek_sin', 'dayofweek_cos', 'day_of_week', 'month_sin', 'month_cos', 'quarter_sin', 'quarter_cos'] for col in extra_in_df)):
+                            st.error(f"Набор признаков в модели не совпадает с текущими признаками в данных!\n"
+                                     f"\nОтсутствуют в данных: {', '.join(missing_in_df) if missing_in_df else 'нет'}"
+                                     f"\nЛишние в данных: {', '.join(extra_in_df) if extra_in_df else 'нет'}\n"
+                                     "Переобучите модель или вернитесь к шагу трансформации.")
+                            return
+                else:
+                    if missing_in_df or (extra_in_df and not all(col in ['dayofweek_sin', 'dayofweek_cos', 'day_of_week', 'month_sin', 'month_cos', 'quarter_sin', 'quarter_cos'] for col in extra_in_df)):
+                        st.error(f"Набор признаков в модели не совпадает с текущими признаками в данных!\n"
+                                 f"\nОтсутствуют в данных: {', '.join(missing_in_df) if missing_in_df else 'нет'}"
+                                 f"\nЛишние в данных: {', '.join(extra_in_df) if extra_in_df else 'нет'}\n"
+                                 "Переобучите модель или вернитесь к шагу трансформации.")
+                        return
 
             # Create progress bar
             progress_bar = st.progress(0)

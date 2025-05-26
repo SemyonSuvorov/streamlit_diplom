@@ -39,6 +39,14 @@ def get_model_description(model_type: ModelType) -> str:
         - I (d) - интегрирование
         - MA (q) - скользящее среднее
         - Seasonal (P, D, Q, s) - сезонные компоненты
+        """,
+        ModelType.DMEN: """
+        DMEN (Dynamic Mutual Enhancement Network) - комбинированная модель с динамическими связями.
+        Особенности:
+        - Объединяет SARIMA, XGBoost, CatBoost и LSTM
+        - Динамические веса на основе производительности моделей
+        - Взаимное усиление через остатки других моделей
+        - Адаптивная комбинация прогнозов
         """
     }
     return descriptions.get(model_type, "Описание модели отсутствует")
@@ -161,25 +169,32 @@ def show_training_tab():
                     
                     # Display SARIMA parameters in a compact format
                     try:
-                        # Get parameters from the model - adjust attribute names if needed
-                        order = model.model.order if hasattr(model.model, 'order') else getattr(model.model, '_order', None)
-                        seasonal_order = model.model.seasonal_order if hasattr(model.model, 'seasonal_order') else getattr(model.model, '_seasonal_order', None)
-                        
-                        params_col1, params_col2 = st.columns(2)
-                        
-                        with params_col1:
-                            st.markdown("##### Параметры SARIMA")
-                            param_text = ""
+                        # Get parameters from the best_params attribute
+                        if hasattr(model, 'best_params'):
+                            params_col1, params_col2 = st.columns(2)
                             
-                            if order:
-                                p, d, q = order
+                            with params_col1:
+                                st.markdown("##### Параметры SARIMA")
+                                param_text = ""
+                                
+                                # Non-seasonal parameters
+                                p = model.best_params['p']
+                                d = model.best_params['d']
+                                q = model.best_params['q']
                                 param_text += f"**Несезонные:** p={p}, d={d}, q={q}"
                                 
-                            if seasonal_order:
-                                P, D, Q, s = seasonal_order
+                                # Seasonal parameters
+                                P = model.best_params['P']
+                                D = model.best_params['D']
+                                Q = model.best_params['Q']
+                                s = model.seasonal_period
                                 param_text += f"<br>**Сезонные:** P={P}, D={D}, Q={Q}, s={s}"
                                 
-                            st.markdown(param_text, unsafe_allow_html=True)
+                                st.markdown(param_text, unsafe_allow_html=True)
+                                
+                                # Display AIC if available
+                                if hasattr(model.best_model, 'aic'):
+                                    st.markdown(f"**AIC:** {model.best_model.aic:.2f}")
                     except Exception as e:
                         st.warning(f"Не удалось отобразить параметры SARIMA: {str(e)}")
             else:

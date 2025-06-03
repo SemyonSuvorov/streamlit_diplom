@@ -8,83 +8,62 @@ import numpy as np
 from services.transformation_service import TransformationService
 
 def inverse_transform_forecast(forecast_series, conf_int=None):
-    """
-    Выполняет обратное преобразование прогноза на основе
-    сохраненных трансформаций стационарности
-    """
-    # Если преобразований не было, возвращаем исходные данные
     if 'stationarity_transformations' not in st.session_state or not st.session_state.stationarity_transformations:
         return forecast_series, conf_int
     
-    # Применяем преобразования в обратном порядке
     transformed_forecast = forecast_series.copy()
     transformed_conf_int = None if conf_int is None else conf_int.copy()
     
-    # Поскольку преобразования применялись последовательно,
-    # мы применяем обратные преобразования в обратном порядке
     for transform_info in reversed(st.session_state.stationarity_transformations):
         transform_type = transform_info.get('type')
         params = transform_info.get('params', {})
         
         if transform_type == 'diff':
-            # Для обратного дифференцирования нам нужно последнее значение исходного ряда
             order = params.get('order', 1)
             if state.get('stationarity_initial') is not None:
                 original_ts = state.get('stationarity_initial').set_index(state.get('date_col'))[state.get('target_col')]
                 last_values = original_ts.iloc[-order:].values
                 
-                # Накопительная сумма (cumsum) с начальным значением
                 forecast_values = transformed_forecast.values
                 for i in range(order):
-                    # Используем последнее значение оригинального ряда как начальное
                     cumsum_values = np.concatenate([[last_values[-(i+1)]], forecast_values])
                     forecast_values = np.cumsum(cumsum_values)[1:]
                 
                 transformed_forecast = pd.Series(forecast_values, index=forecast_series.index)
                 
-                # Если есть доверительные интервалы, преобразуем их тоже
                 if transformed_conf_int is not None:
                     for col in ['lower', 'upper']:
                         interval_values = transformed_conf_int[col].values
                         for i in range(order):
-                            # Используем последнее значение как начальное
                             cumsum_interval = np.concatenate([[last_values[-(i+1)]], interval_values])
                             interval_values = np.cumsum(cumsum_interval)[1:]
                         transformed_conf_int[col] = interval_values
                 
         elif transform_type == 'log':
-            # Для обратного логарифмирования применяем экспоненту
             transformed_forecast = np.exp(transformed_forecast)
             
-            # Если есть доверительные интервалы, преобразуем их тоже
             if transformed_conf_int is not None:
                 transformed_conf_int['lower'] = np.exp(transformed_conf_int['lower'])
                 transformed_conf_int['upper'] = np.exp(transformed_conf_int['upper'])
                 
         elif transform_type == 'seasonal_diff':
-            # Для обратного сезонного дифференцирования также нужны исходные значения
             seasonal_period = params.get('seasonal_period', 12)
             if state.get('stationarity_initial') is not None:
                 original_ts = state.get('stationarity_initial').set_index(state.get('date_col'))[state.get('target_col')]
                 
-                # Получаем сезонные значения
                 seasonal_values = original_ts.iloc[-seasonal_period:].values
                 
-                # Выполняем обратное сезонное дифференцирование
                 forecast_values = transformed_forecast.values
                 result_values = np.zeros_like(forecast_values)
                 
                 for i in range(len(forecast_values)):
                     if i < seasonal_period:
-                        # Используем исходные сезонные значения
                         result_values[i] = forecast_values[i] + seasonal_values[i]
                     else:
-                        # Используем уже рассчитанные значения
                         result_values[i] = forecast_values[i] + result_values[i - seasonal_period]
                 
                 transformed_forecast = pd.Series(result_values, index=forecast_series.index)
                 
-                # Если есть доверительные интервалы, преобразуем их тоже
                 if transformed_conf_int is not None:
                     for col in ['lower', 'upper']:
                         interval_values = transformed_conf_int[col].values
@@ -101,41 +80,31 @@ def inverse_transform_forecast(forecast_series, conf_int=None):
     return transformed_forecast, transformed_conf_int
 
 def show_feature_importance_tab(model, model_type):
-    """
-    Отображает вкладку с информацией о важности признаков для регрессионных моделей
-    """
     st.subheader("Важность признаков")
     
-    # Специальная обработка для DMEN
     if model_type == ModelType.DMEN:
         try:
-            # Отображаем динамические веса моделей
             st.markdown("### Динамические веса моделей")
             weights = model.get_model_weights()
             
-            # График весов
             fig_weights = model.plot_model_weights()
             st.plotly_chart(fig_weights, use_container_width=True)
             
-            # Таблица весов
             weights_df = pd.DataFrame({
                 'Модель': list(weights.keys()),
                 'Вес': list(weights.values())
             })
             st.dataframe(weights_df)
             
-            # Матрица взаимного усиления
             st.markdown("### Матрица взаимного усиления (Θ)")
             theta_matrix = model.get_theta_matrix()
             
-            # Создаем DataFrame для лучшего отображения
             theta_df = pd.DataFrame(
                 theta_matrix,
                 index=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM'],
                 columns=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM']
             )
             
-            # Тепловая карта матрицы
             fig_theta = go.Figure(data=go.Heatmap(
                 z=theta_matrix,
                 x=['SARIMA', 'XGBoost', 'CatBoost', 'LSTM'],
@@ -156,7 +125,6 @@ def show_feature_importance_tab(model, model_type):
             
             st.plotly_chart(fig_theta, use_container_width=True)
             
-            # Объяснение матрицы
             st.markdown("""
             ### Интерпретация матрицы взаимного усиления
             
@@ -174,18 +142,14 @@ def show_feature_importance_tab(model, model_type):
         
         return
     
-    # Проверяем, что модель является регрессионной (XGBoost или CatBoost)
     if model_type in [ModelType.XGBOOST, ModelType.CATBOOST]:
         try:
-            # Получаем важность признаков
             if not hasattr(model, 'feature_names') or not model.feature_names:
                 st.warning("Информация о признаках недоступна для данной модели")
                 return
                 
             if model_type == ModelType.XGBOOST:
-                # Для XGBoost используем встроенную функцию get_score()
                 feature_importance = model.model.get_booster().get_score(importance_type='weight')
-                # Преобразуем в DataFrame для отображения
                 importance_df = pd.DataFrame({
                     'Признак': list(feature_importance.keys()),
                     'Важность': list(feature_importance.values())
@@ -193,7 +157,6 @@ def show_feature_importance_tab(model, model_type):
                 importance_df = importance_df.sort_values('Важность', ascending=False)
                 
             elif model_type == ModelType.CATBOOST:
-                # Для CatBoost получаем важность признаков
                 importance = model.model.get_feature_importance()
                 importance_df = pd.DataFrame({
                     'Признак': model.feature_names,
@@ -203,7 +166,6 @@ def show_feature_importance_tab(model, model_type):
                 
             fig = go.Figure()
             
-            # Ограничиваем количество отображаемых признаков (топ-10)
             top_n = min(10, len(importance_df))
             top_features = importance_df.head(top_n)
             
@@ -222,7 +184,6 @@ def show_feature_importance_tab(model, model_type):
             
             st.plotly_chart(fig, use_container_width=True)
             
-            # Добавляем описание влияния признаков
             st.markdown("### Интерпретация важности признаков")
             st.markdown("""
             Важность признаков показывает, насколько сильно каждый признак влияет на прогноз модели:
@@ -239,17 +200,15 @@ def show_feature_importance_tab(model, model_type):
         st.info("Информация о важности признаков доступна только для регрессионных моделей (XGBoost, CatBoost) и DMEN")
 
 def show_forecast_tab():
-    """Display forecast tab"""
     st.markdown("### Прогнозирование")
     
-    # Get available models
     available_models = []
     model_type = None
     for model in ModelType:
         model_key = f"{model.value.lower()}_model"
         if model_key in st.session_state and st.session_state[model_key].is_fitted():
             available_models.append(model.value)
-            if model_type is None:  # Use the first available model as default
+            if model_type is None:
                 model_type = model
     
     if not available_models:
@@ -260,7 +219,6 @@ def show_forecast_tab():
     with col1:
         st.success(f"Доступные модели: {', '.join(available_models)}")
     
-    # Create columns for parameters
     col1, col2, col3 = st.columns(3)
     
     with col2:
@@ -270,17 +228,14 @@ def show_forecast_tab():
                 available_models,
                 key="forecast_selected_model"
             )
-            # Update model_type based on selection
             for model in ModelType:
                 if model.value == selected_model_name:
                     model_type = model
                     break
     
-    # Get trained model
     model = st.session_state[f"{model_type.value.lower()}_model"]
     
     with col1:
-        # Get forecast horizon
         forecast_horizon = st.number_input(
             "Горизонт прогнозирования (дни)",
             min_value=1,
@@ -288,10 +243,7 @@ def show_forecast_tab():
             value=30,
             key="forecast_tab_horizon"
         )
-
-        
     
-    # Добавляем чекбокс для обратного преобразования только если были применены преобразования стационарности
     inverse_transform = False
     if 'stationarity_transformations' in st.session_state and st.session_state.stationarity_transformations:
         inverse_transform = st.checkbox(
@@ -311,17 +263,14 @@ def show_forecast_tab():
         progress_bar = None
         status_text = None
         try:
-            # Check if model is trained
             if hasattr(model, 'is_fitted') and callable(model.is_fitted) and not model.is_fitted():
                 st.error("Модель не обучена. Пожалуйста, вернитесь на вкладку 'Обучение' и убедитесь, что модель обучена корректно.")
                 return
             
-            # Prepare data
             date_col = state.get('date_col')
             feature_df = state.get('feature_df')
             if feature_df is not None:
                 ts = feature_df.copy()
-                # Преобразование date_col в datetimeindex, если он задан и есть в ts
                 if date_col is not None and date_col in ts.columns:
                     ts[date_col] = pd.to_datetime(ts[date_col], errors='coerce')
                     ts = ts.set_index(date_col)
@@ -332,7 +281,6 @@ def show_forecast_tab():
                 return
 
             if model_type != ModelType.SARIMA:
-                # Define target_col at the beginning
                 target_col = model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col')
                 
                 model_features = set(getattr(model, 'feature_names', []))
@@ -340,17 +288,13 @@ def show_forecast_tab():
                 missing_in_df = model_features - df_features
                 extra_in_df = df_features - model_features
                 
-                # If using LSTM model and missing lag features, create them
                 if model_type == ModelType.LSTM:
-                    # Get the features that were used during training
                     lstm_features = state.get('lstm_features')
                     if lstm_features is not None:
-                        # Only check for missing features that were used in training
                         model_features = set(lstm_features)
                         missing_in_df = model_features - df_features
-                        extra_in_df = set()  # Ignore extra features for LSTM
+                        extra_in_df = set()
                         
-                        # Create any missing lag features
                         for feature in list(missing_in_df):
                             if '_lag' in feature:
                                 parts = feature.split('_lag')
@@ -361,10 +305,8 @@ def show_forecast_tab():
                                     ts[feature] = ts[base_feature].shift(lag_num)
                                     missing_in_df.remove(feature)
                         
-                        # Fill NaN values created by the lag
                         ts = ts.fillna(method='bfill').fillna(method='ffill')
                         
-                        # Update feature lists after creating lag features
                         df_features = set([col for col in ts.columns if col != target_col])
                         missing_in_df = model_features - df_features
                     else:
@@ -382,7 +324,6 @@ def show_forecast_tab():
                                  "Переобучите модель или вернитесь к шагу трансформации.")
                         return
 
-            # Create progress bar
             progress_bar = st.progress(0)
             status_text = st.empty()
             
@@ -391,15 +332,12 @@ def show_forecast_tab():
                 progress_bar.progress(progress)
                 status_text.text(f"Прогресс прогнозирования: {int(progress * 100)}%")
             
-            # Make forecast
             try:
                 if model_type == ModelType.SARIMA:
                     forecast, conf_int = model.forecast(ts[model.config.target_col], forecast_horizon)
                 elif model_type == ModelType.LSTM:
-                    # For LSTM, use the features that were selected during training
                     lstm_features = state.get('lstm_features')
                     
-                    # Ensure target column is available
                     target_col = model.config.target_col if hasattr(model, 'config') and hasattr(model.config, 'target_col') else state.get('target_col')
                     if target_col not in ts.columns:
                         st.error(f"Целевая переменная '{target_col}' не найдена в данных для прогнозирования. Доступные колонки: {', '.join(ts.columns)}")
@@ -410,7 +348,6 @@ def show_forecast_tab():
                         return
                     
                     if lstm_features is not None:
-                        # Create any missing lag features
                         for feature in lstm_features:
                             if '_lag' in feature and feature not in ts.columns:
                                 parts = feature.split('_lag')
@@ -419,10 +356,7 @@ def show_forecast_tab():
                                 if base_feature in ts.columns:
                                     ts[feature] = ts[base_feature].shift(lag_num)
                         
-                        # Fill NaN values from the lag features
                         ts = ts.fillna(method='bfill').fillna(method='ffill')
-                    
-                
                     
                     forecast, conf_int = model.forecast(ts, forecast_horizon, progress_callback=update_progress)
                 else:
@@ -438,17 +372,14 @@ def show_forecast_tab():
                         status_text.empty()
                     return
                 else:
-                    # Re-raise if it's another error
                     raise
                     
-            # Выполняем обратное преобразование, если это запрошено и были трансформации
             original_forecast = forecast.copy()
             original_conf_int = None if conf_int is None else conf_int.copy()
             
             if inverse_transform:
                 forecast, conf_int = inverse_transform_forecast(forecast, conf_int)
                     
-            # Store forecast in session state
             st.session_state[f"{model_type.value.lower()}_forecast"] = forecast
             st.session_state[f"{model_type.value.lower()}_conf_int"] = conf_int
             
@@ -456,23 +387,18 @@ def show_forecast_tab():
             with col1:
                 st.success("Прогноз успешно создан!")
 
-            
-            # Создаем вкладки для отображения результатов
             forecast_tab, importance_tab = st.tabs(["Результаты прогноза", "Важность признаков"])
             
             with forecast_tab:
-                # Create interactive plot with Plotly
                 fig = make_subplots(rows=2, cols=1, 
                                   subplot_titles=("Прогноз временного ряда", "Детали прогноза"),
                                   vertical_spacing=0.2)
                 
-                # Add actual values
                 if hasattr(model, 'config') and hasattr(model.config, 'target_col'):
                     target_col = model.config.target_col
                 else:
                     target_col = state.get('target_col')
                     
-                # Если выполнено обратное преобразование и есть исходный ряд, используем его вместо текущего
                 historical_data = ts[target_col]
                 if inverse_transform and state.get('stationarity_initial') is not None:
                     original_ts = state.get('stationarity_initial').set_index(state.get('date_col'))[state.get('target_col')]
@@ -486,14 +412,12 @@ def show_forecast_tab():
                         row=1, col=1
                     )
                 
-                # Add forecast
                 fig.add_trace(
                     go.Scatter(x=forecast.index, y=forecast.values, name="Прогноз",
                               line=dict(color='red')),
                     row=1, col=1
                 )
                 
-                # Add confidence intervals if available and requested (только для SARIMA)
                 if model_type == ModelType.SARIMA and conf_int is not None and show_confidence:
                     fig.add_trace(
                         go.Scatter(x=forecast.index, y=conf_int['upper'], 
@@ -507,8 +431,6 @@ def show_forecast_tab():
                         row=1, col=1
                     )
                 
-                # Add forecast details
-                # 1. Trend analysis
                 try:
                     forecast_values = np.array(forecast.values, dtype=np.float64)
                     if np.isnan(forecast_values).any():
@@ -522,8 +444,7 @@ def show_forecast_tab():
                         row=2, col=1
                     )
                     
-                    # 2. Seasonal decomposition (if applicable)
-                    if len(forecast) > 7:  # Only if we have enough data for weekly seasonality
+                    if len(forecast) > 7:
                         weekly_avg = pd.Series(forecast_values, index=forecast.index).groupby(forecast.index.dayofweek).mean()
                         seasonal = weekly_avg.reindex(forecast.index.dayofweek).values
                         fig.add_trace(
@@ -533,10 +454,8 @@ def show_forecast_tab():
                         )
                 except Exception as e:
                     st.warning(f"Не удалось выполнить анализ тренда и сезонности: {str(e)}")
-                    # Продолжаем без анализа тренда и сезонности
                     pass
                 
-                # Update layout
                 transformed_text = " (обратно преобразованный)" if inverse_transform else ""
                 fig.update_layout(
                     height=800, 
@@ -548,13 +467,10 @@ def show_forecast_tab():
                 fig.update_yaxes(title_text="Значение", row=1, col=1)
                 fig.update_yaxes(title_text="Значение", row=2, col=1)
                 
-                # Display the plot
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Display forecast analysis
                 st.subheader("Анализ прогноза")
                 
-                # Create columns for different metrics
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
@@ -576,7 +492,6 @@ def show_forecast_tab():
                     st.dataframe(trend_stats)
                 
                 with col3:
-                    # Показываем информацию о доверительных интервалах только для SARIMA
                     if model_type == ModelType.SARIMA:
                         st.markdown("**Доверительные интервалы:**")
                         if conf_int is not None:
@@ -592,19 +507,16 @@ def show_forecast_tab():
                         st.markdown("**Дополнительно:**")
                         st.info("Для получения дополнительной информации о модели перейдите на вкладку \"Важность признаков\"")
                 
-                # Display forecast values in a table
                 st.subheader("Таблица прогноза")
                 forecast_df = pd.DataFrame({
                     'Date': forecast.index,
                     'Value': forecast.values
                 })
-                # Добавляем доверительные интервалы в таблицу только для SARIMA
                 if model_type == ModelType.SARIMA and conf_int is not None:
                     forecast_df['Нижняя граница'] = conf_int['lower']
                     forecast_df['Верхняя граница'] = conf_int['upper']
                 st.dataframe(forecast_df)
                 
-                # Add download button for forecast data
                 csv = forecast_df.to_csv(index=False, encoding="cp1251")
                 st.download_button(
                     label="Скачать прогноз",
@@ -613,7 +525,6 @@ def show_forecast_tab():
                     mime="text/csv"
                 )
             
-            # Показываем вкладку с важностью признаков только для поддерживаемых моделей
             with importance_tab:
                 show_feature_importance_tab(model, model_type)
                 

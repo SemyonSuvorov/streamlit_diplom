@@ -10,25 +10,25 @@ class ModelConfig:
     window_size: Optional[int] = None
     train_size: Optional[float] = None
     n_splits: Optional[int] = None
-    forecast_approach: Optional[str] = None  # 'recursive' or 'direct'
+    forecast_approach: Optional[str] = None  
     
-    # Parameters for tree-based models (XGBoost, CatBoost)
+
     n_estimators: Optional[int] = None
     max_depth: Optional[int] = None
     learning_rate: Optional[float] = None
     
-    # Parameters for neural networks (LSTM)
+
     epochs: Optional[int] = None
     batch_size: Optional[int] = None
     hidden_size: Optional[int] = None
     num_layers: Optional[int] = None
     
-    # Parameters for DMEN
-    alpha: Optional[float] = None  # weight for performance
-    beta: Optional[float] = None   # weight for variability
-    gamma: Optional[float] = None  # weight for consistency
+
+    alpha: Optional[float] = None  
+    beta: Optional[float] = None   
+    gamma: Optional[float] = None  
     
-    # SARIMA parameters
+
     p_values: Optional[List[int]] = None
     d_values: Optional[List[int]] = None
     q_values: Optional[List[int]] = None

@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.6">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.8">
   <diagram id="xKTtGBuTP3AM2VEvTlIZ" name="Страница — 1">
-    <mxGraphModel dx="1426" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+    <mxGraphModel dx="1298" dy="839" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -53,10 +53,10 @@
           <mxGeometry x="690" y="320" width="80" height="60" as="geometry" />
         </mxCell>
         <mxCell id="sarima" value="SARIMA&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
-          <mxGeometry x="810" y="320" width="80" height="60" as="geometry" />
+          <mxGeometry x="780" y="320" width="80" height="60" as="geometry" />
         </mxCell>
         <mxCell id="catboost" value="CatBoost&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
-          <mxGeometry x="940" y="320" width="80" height="60" as="geometry" />
+          <mxGeometry x="960" y="320" width="80" height="60" as="geometry" />
         </mxCell>
         <mxCell id="lstm" value="LSTM&#xa;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" parent="1" vertex="1">
           <mxGeometry x="1050" y="320" width="80" height="60" as="geometry" />
@@ -151,7 +151,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="state_to_supabase" value="Персистентное&#xa;хранение" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="state_layer" target="supabase" edge="1">
+        <mxCell id="state_to_supabase" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="state_layer" target="supabase" edge="1">
           <mxGeometry x="-0.302" y="20" width="50" height="50" relative="1" as="geometry">
             <mxPoint x="400" y="410" as="sourcePoint" />
             <mxPoint x="450" y="360" as="targetPoint" />
@@ -207,6 +207,9 @@
             </Array>
             <mxPoint as="offset" />
           </mxGeometry>
+        </mxCell>
+        <mxCell id="KqfuF3BqMUSYyWx0IjPe-1" value="DMEN&lt;br&gt;Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0c4e3;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="870" y="320" width="80" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

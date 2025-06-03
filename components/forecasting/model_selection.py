@@ -47,7 +47,7 @@ def show_model_selection_tab() -> tuple[ModelConfig, ModelType]:
         train_size=train_size
     )
 
-    # SARIMA
+
     if model_type == ModelType.SARIMA:
         st.markdown("#### Параметры SARIMA (auto_arima)")
         col1, col2 = st.columns(2)
@@ -112,7 +112,6 @@ def show_model_selection_tab() -> tuple[ModelConfig, ModelType]:
                 step=0.01,
                 key=f"{model_type.value.lower()}_learning_rate"
             )
-    # LSTM, GRU, TRANSFORMER
     elif model_type == ModelType.LSTM:
         st.markdown("#### Параметры нейронной сети")
         config.epochs = st.number_input(

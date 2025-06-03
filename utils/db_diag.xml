@@ -1,0 +1,115 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.6">
+  <diagram name="Database Schema" id="dbschema">
+    <mxGraphModel dx="1426" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="auth-schema" value="auth" style="shape=umlFrame;whiteSpace=wrap;html=1;width=120;height=30;boundedLbl=1;verticalAlign=middle;align=left;spacingLeft=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="40" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-users" value="&lt;b&gt;users&lt;/b&gt;&lt;br&gt;&lt;hr&gt;id: uuid (PK)&lt;br&gt;email: text&lt;br&gt;created_at: timestamp" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="60" y="80" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="sessions" value="&lt;b&gt;sessions&lt;/b&gt;&lt;br&gt;&lt;hr&gt;session_id: text (PK)&lt;br&gt;user_id: uuid (FK)&lt;br&gt;state: jsonb&lt;br&gt;ip_address: text&lt;br&gt;user_agent: text&lt;br&gt;created_at: timestamp&lt;br&gt;updated_at: timestamp" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=5;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="400" y="40" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="session-dataframes" value="&lt;b&gt;session_dataframes&lt;/b&gt;&lt;br&gt;&lt;hr&gt;id: uuid (PK)&lt;br&gt;session_id: text (FK)&lt;br&gt;dataframe_name: text&lt;br&gt;data: jsonb&lt;br&gt;columns: jsonb&lt;br&gt;index: jsonb&lt;br&gt;created_at: timestamp&lt;br&gt;updated_at: timestamp" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="750" y="30" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="trained-models" value="&lt;b&gt;trained_models&lt;/b&gt;&lt;br&gt;&lt;hr&gt;id: uuid (PK)&lt;br&gt;session_id: text (FK)&lt;br&gt;user_id: uuid (FK)&lt;br&gt;model_type: text&lt;br&gt;model_config: jsonb&lt;br&gt;model_weights: bytea&lt;br&gt;performance_metrics: jsonb&lt;br&gt;training_completed_at: timestamp&lt;br&gt;created_at: timestamp" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=5;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="400" y="240" width="240" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="forecast-results" value="&lt;b&gt;forecast_results&lt;/b&gt;&lt;br&gt;&lt;hr&gt;id: uuid (PK)&lt;br&gt;model_id: uuid (FK)&lt;br&gt;session_id: text (FK)&lt;br&gt;forecast_horizon: integer&lt;br&gt;predictions: jsonb&lt;br&gt;confidence_intervals: jsonb&lt;br&gt;actual_values: jsonb&lt;br&gt;created_at: timestamp" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=5;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="750" y="270" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="user-activity-logs" value="&lt;b&gt;user_activity_logs&lt;/b&gt;&lt;br&gt;&lt;hr&gt;id: uuid (PK)&lt;br&gt;user_id: uuid (FK)&lt;br&gt;session_id: text (FK)&lt;br&gt;action_type: text&lt;br&gt;action_details: jsonb&lt;br&gt;ip_address: inet&lt;br&gt;created_at: timestamp" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=5;fillColor=#f5f5f5;strokeColor=#666666;" parent="1" vertex="1">
+          <mxGeometry x="60" y="280" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;" parent="1" source="auth-users" target="sessions" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1-label" value="user_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel1" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;" parent="1" source="sessions" target="session-dataframes" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2-label" value="session_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel2" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;" parent="1" source="sessions" target="trained-models" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel3-label" value="session_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel3" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="200" />
+              <mxPoint x="360" y="200" />
+              <mxPoint x="360" y="305" />
+            </Array>
+            <mxPoint x="180" y="190" as="sourcePoint" />
+            <mxPoint x="400" y="305" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel4-label" value="user_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel4" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="-34" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;" parent="1" source="trained-models" target="forecast-results" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel5-label" value="model_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel5" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="sessions" target="forecast-results" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="145" />
+              <mxPoint x="680" y="220" />
+              <mxPoint x="870" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel6-label" value="session_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel6" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;" parent="1" source="auth-users" target="user-activity-logs" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel7-label" value="user_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel7" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="sessions" target="user-activity-logs" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="145" />
+              <mxPoint x="360" y="318" />
+              <mxPoint x="310" y="318" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel8-label" value="session_id" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="rel8" vertex="1" connectable="0">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="-41" y="2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

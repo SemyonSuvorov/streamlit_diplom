@@ -9,7 +9,6 @@ import numpy as np
 from components.forecasting.model_selection import show_model_selection_tab
 
 def get_model_description(model_type: ModelType) -> str:
-    """Get description for each model type"""
     descriptions = {
         ModelType.XGBOOST: """
         XGBoost - градиентный бустинг на деревьях решений.
@@ -52,7 +51,6 @@ def get_model_description(model_type: ModelType) -> str:
     return descriptions.get(model_type, "Описание модели отсутствует")
 
 def get_parameter_description(param_name: str) -> str:
-    """Get description for model parameters"""
     descriptions = {
         'window_size': """
         Размер окна - количество предыдущих значений, используемых для прогнозирования следующего значения.
@@ -98,13 +96,10 @@ def get_parameter_description(param_name: str) -> str:
     return descriptions.get(param_name, "Описание параметра отсутствует")
 
 def show_training_tab():
-    """Display model training tab"""
     st.markdown("### Обучение модели")
 
-    # Получаем параметры и тип модели через UI выбора
     config, model_type = show_model_selection_tab()
 
-    # Описание модели (можно добавить expander при желании)
     with st.expander("Описание модели", expanded=True):
         st.markdown(get_model_description(model_type))
 
@@ -167,9 +162,7 @@ def show_training_tab():
                     model.fit(X_df[config.target_col])
                     cv_metrics = model.cross_validate(X_df[[config.target_col]], config.target_col)
                     
-                    # Display SARIMA parameters in a compact format
                     try:
-                        # Get parameters from the best_params attribute
                         if hasattr(model, 'best_params'):
                             params_col1, params_col2 = st.columns(2)
                             
@@ -177,13 +170,11 @@ def show_training_tab():
                                 st.markdown("##### Параметры SARIMA")
                                 param_text = ""
                                 
-                                # Non-seasonal parameters
                                 p = model.best_params['p']
                                 d = model.best_params['d']
                                 q = model.best_params['q']
                                 param_text += f"**Несезонные:** p={p}, d={d}, q={q}"
                                 
-                                # Seasonal parameters
                                 P = model.best_params['P']
                                 D = model.best_params['D']
                                 Q = model.best_params['Q']
@@ -192,7 +183,6 @@ def show_training_tab():
                                 
                                 st.markdown(param_text, unsafe_allow_html=True)
                                 
-                                # Display AIC if available
                                 if hasattr(model.best_model, 'aic'):
                                     st.markdown(f"**AIC:** {model.best_model.aic:.2f}")
                     except Exception as e:
@@ -206,33 +196,24 @@ def show_training_tab():
                     status_text.text(f"Прогресс: {int(progress * 100)}%")
                 model = ModelFactory.create_model(model_type, config)
                 
-                # Special handling for LSTM model
                 if model_type == ModelType.LSTM:
-                    # Perform feature selection based on correlation with target
                     corr_with_target = X_df.corr()[config.target_col].abs().sort_values(ascending=False)
                     top_features = corr_with_target.head(min(10, len(corr_with_target))).index.tolist()
-                    # Always include target variable
                     if config.target_col not in top_features:
                         top_features.append(config.target_col)
                     
-                    # Only use top correlated features to avoid overwhelming the LSTM
                     X_df_lstm = X_df[top_features].copy()
                     
-                    # Add lag features especially for LSTM
-                    for lag in range(1, 4):  # Add 3 lag features
+                    for lag in range(1, 4):
                         X_df_lstm[f'{config.target_col}_lag{lag}'] = X_df_lstm[config.target_col].shift(lag)
                     
-                    # Handle NaNs from shifts
                     X_df_lstm = X_df_lstm.dropna()
                     
-                    # Save the feature list so we can use exactly these features during prediction
                     state.set('lstm_features', list(X_df_lstm.columns))
-                    
                     
                     model.fit(X_df_lstm, config.target_col, progress_callback=update_progress)
                     cv_metrics = model.cross_validate(X_df_lstm, config.target_col, progress_callback=update_progress)
                 else:
-                    # Standard flow for other models
                     model.fit(X_df, config.target_col, progress_callback=update_progress)
                     cv_metrics = model.cross_validate(X_df, config.target_col, progress_callback=update_progress)
 

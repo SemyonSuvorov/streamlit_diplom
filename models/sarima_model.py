@@ -40,7 +40,6 @@ class SARIMAModel(BaseModel):
         return ts
 
     def _objective(self, trial, train):
-        # Define the hyperparameter search space with more focused ranges
         p = trial.suggest_int('p', 0, 2)  
         d = trial.suggest_int('d', 0, 2)
         q = trial.suggest_int('q', 0, 2)  
@@ -48,10 +47,8 @@ class SARIMAModel(BaseModel):
         D = trial.suggest_int('D', 0, 2)
         Q = trial.suggest_int('Q', 0, 2)  
         
-        # Create a unique key for caching
         param_key = f"p{p}_d{d}_q{q}_P{P}_D{D}_Q{Q}"
         
-        # Check if we've already tried these parameters
         if hasattr(self, '_param_cache') and param_key in self._param_cache:
             return self._param_cache[param_key]
         
@@ -64,17 +61,14 @@ class SARIMAModel(BaseModel):
                 enforce_invertibility=False
             )
             
-            # Add early stopping by checking AIC during fitting
-            results = model.fit(disp=False, maxiter=50)  # Limit iterations
+            results = model.fit(disp=False, maxiter=50)
             
-            # Cache the result
             if not hasattr(self, '_param_cache'):
                 self._param_cache = {}
             self._param_cache[param_key] = results.aic
             
             return results.aic
         except:
-            # Cache failed attempts too
             if not hasattr(self, '_param_cache'):
                 self._param_cache = {}
             self._param_cache[param_key] = float('inf')
@@ -87,14 +81,11 @@ class SARIMAModel(BaseModel):
         test = ts[train_size:]
         
         try:
-            # Create and optimize the study
             study = optuna.create_study(direction='minimize')
             study.optimize(lambda trial: self._objective(trial, train), n_trials=n_trials)
             
-            # Get the best parameters
             self.best_params = study.best_params
             
-            # Fit the model with best parameters
             self.model = SARIMAX(
                 train,
                 order=(self.best_params['p'], self.best_params['d'], self.best_params['q']),
@@ -119,7 +110,6 @@ class SARIMAModel(BaseModel):
         tscv = TimeSeriesSplit(n_splits=self.n_splits)
         mse_scores, mae_scores, r2_scores = [], [], []
         
-        # Ensure we have a fitted model first
         if self.model is None or not self._is_fitted:
             raise ValueError("Model must be fitted first. Call fit() before cross_validate().")
         
@@ -132,32 +122,25 @@ class SARIMAModel(BaseModel):
             test_ts = ts.iloc[test_idx]
             
             try:
-                # Подготовка данных для прогноза
                 self._prepare_ts(train_ts.copy())
                 
-                # Прогноз используя только существующую модель (self.model)
                 forecast_series, _ = self.forecast(train_ts, len(test_ts))
                 
-                # Handle date alignment issues - make sure indices match exactly
                 aligned_forecast = forecast_series.copy()
                 if not all(idx in test_ts.index for idx in aligned_forecast.index):
-                    # Reindex forecast to match test data exactly
                     aligned_forecast = pd.Series(
                         forecast_series.values, 
                         index=test_ts.index
                     )
                 
-                # Calculate metrics
                 mse = mean_squared_error(test_ts, aligned_forecast)
                 mae = mean_absolute_error(test_ts, aligned_forecast)
                 r2 = r2_score(test_ts, aligned_forecast)
                 
-                # Save metrics
                 mse_scores.append(mse)
                 mae_scores.append(mae)
                 r2_scores.append(r2)
                 
-                # Save the last fold's data for plotting
                 if i == self.n_splits - 1 or i == len(list(tscv.split(ts))) - 1:
                     last_test_actual = test_ts
                     last_test_pred = aligned_forecast
@@ -171,7 +154,6 @@ class SARIMAModel(BaseModel):
                 traceback.print_exc()
                 continue
         
-        # Save the last fold's data for plotting
         if last_test_actual is not None and last_test_pred is not None:
             self.test_data = {
                 'dates': last_test_dates,
@@ -179,7 +161,6 @@ class SARIMAModel(BaseModel):
                 'predicted': last_test_pred
             }
             
-            # Also save the last metrics
             if mse_scores and mae_scores and r2_scores:
                 self.metrics = {
                     'mse': mse_scores[-1],
@@ -225,12 +206,10 @@ class SARIMAModel(BaseModel):
             raise ValueError("Model has not been trained yet. Call fit() first.")
         ts = self._prepare_ts(ts)
         
-        # Use get_forecast instead of predict
         forecast_result = self.best_model.get_forecast(steps=horizon)
         forecast_values = forecast_result.predicted_mean
         conf_int = forecast_result.conf_int()
         
-        # Denormalize the forecast
         forecast_values = forecast_values * self.data_std + self.data_mean
         conf_int = conf_int * self.data_std + self.data_mean
         

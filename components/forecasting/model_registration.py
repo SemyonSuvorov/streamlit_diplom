@@ -7,7 +7,7 @@ from components.forecasting.model_registry import ModelRegistry, ModelType
 
 def register_models():
     """Register all available models"""
-    # Register XGBoost model
+
     ModelRegistry.register(
         ModelType.XGBOOST,
         XGBoostModel,
@@ -21,7 +21,7 @@ def register_models():
         }
     )
 
-    # Register CatBoost model
+
     ModelRegistry.register(
         ModelType.CATBOOST,
         CatBoostModel,
@@ -35,7 +35,7 @@ def register_models():
         }
     )
 
-    # Register SARIMA model
+
     ModelRegistry.register(
         ModelType.SARIMA,
         SARIMAModel,
@@ -52,7 +52,7 @@ def register_models():
         }
     )
 
-    # Register LSTM model
+
     ModelRegistry.register(
         ModelType.LSTM,
         LSTMModel,
@@ -68,7 +68,7 @@ def register_models():
         }
     )
 
-    # Register DMEN model
+
     ModelRegistry.register(
         ModelType.DMEN,
         DMENModel,

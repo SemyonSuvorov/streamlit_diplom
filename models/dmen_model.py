@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.special import expit  # сигмоида
+from scipy.special import expit
 from collections import deque
 import warnings
 import plotly.graph_objects as go
@@ -9,7 +9,6 @@ from typing import Tuple, Dict, List, Optional, Any
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
-# Импорты для базовых моделей
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.arima.model import ARIMA
 import xgboost as xgb
@@ -28,22 +27,15 @@ from state.session import state
 warnings.filterwarnings('ignore')
 
 class DMENModel(BaseModel):
-    """
-    Dynamic Mutual Enhancement Network (DMEN) - комбинированная модель
-    с динамическими связями между базовыми моделями
-    """
-    
     def __init__(self, config: ModelConfig):
         super().__init__(config)
         
-        # Параметры DMEN
         self.window_size = getattr(config, 'window_size', 30)
         self.learning_rate = getattr(config, 'learning_rate', 0.01)
-        self.alpha = getattr(config, 'alpha', 1.0)  # вес производительности
-        self.beta = getattr(config, 'beta', 0.5)    # вес вариабельности
-        self.gamma = getattr(config, 'gamma', 0.5)  # вес консистентности
+        self.alpha = getattr(config, 'alpha', 1.0)
+        self.beta = getattr(config, 'beta', 0.5)
+        self.gamma = getattr(config, 'gamma', 0.5)
         
-        # Параметры базовых моделей
         self.n_estimators = getattr(config, 'n_estimators', 100)
         self.max_depth = getattr(config, 'max_depth', 6)
         self.epochs = getattr(config, 'epochs', 50)
@@ -51,11 +43,9 @@ class DMENModel(BaseModel):
         self.train_size = getattr(config, 'train_size', 0.8)
         self.n_splits = getattr(config, 'n_splits', 5)
         
-        # Инициализация матрицы взаимного усиления
         self.theta = np.zeros((4, 4))
-        np.fill_diagonal(self.theta, 0)  # диагональ всегда 0
+        np.fill_diagonal(self.theta, 0)
         
-        # История для расчета динамических весов
         self.performance_history = {
             'sarima': deque(maxlen=self.window_size),
             'xgboost': deque(maxlen=self.window_size),
@@ -81,12 +71,11 @@ class DMENModel(BaseModel):
         self.models = {}
         self.model_names = ['sarima', 'xgboost', 'catboost', 'lstm']
         
-        # Инициализируем приоритетными весами (регрессоры получают больший вес)
         model_priorities = {
-            'sarima': 0.8,      # Меньший приоритет для SARIMA
-            'xgboost': 1.3,     # Больший приоритет для регрессоров
-            'catboost': 1.3,    # Больший приоритет для регрессоров
-            'lstm': 1.0         # Нейтральный приоритет для LSTM
+            'sarima': 0.8,
+            'xgboost': 1.3,
+            'catboost': 1.3,
+            'lstm': 1.0
         }
         total_priority = sum(model_priorities.values())
         self.dynamic_weights = {name: model_priorities[name]/total_priority for name in self.model_names}
@@ -96,13 +85,11 @@ class DMENModel(BaseModel):
         self.test_data = None
         
     def _calculate_reliability_score(self, model_name: str) -> float:
-        """Расчет оценки надежности модели"""
         if len(self.performance_history[model_name]) < 5:
-            return 0.0  # дефолтное значение
+            return 0.0
         
         errors = list(self.performance_history[model_name])
         
-        # Производительность (1 - MAPE)
         if len(self.y_true_history) > 0:
             y_true_values = list(self.y_true_history)
             mean_true = np.mean(np.abs(y_true_values))
@@ -114,14 +101,12 @@ class DMENModel(BaseModel):
         else:
             performance = 0.5
         
-        # Вариабельность ошибок
         mean_abs_errors = np.mean(np.abs(errors))
         if mean_abs_errors > 1e-8:
             variance = np.std(errors) / mean_abs_errors
         else:
             variance = 0.0
         
-        # Консистентность (корреляция с истинными значениями)
         if len(self.y_pred_history[model_name]) >= 5 and len(self.y_true_history) >= 5:
             y_true = list(self.y_true_history)[-len(self.y_pred_history[model_name]):]
             y_pred = list(self.y_pred_history[model_name])
@@ -141,54 +126,44 @@ class DMENModel(BaseModel):
         else:
             consistency = 0.5
         
-        # Комбинированная оценка
         z = (self.alpha * performance - 
              self.beta * variance + 
              self.gamma * consistency)
         
-        # Проверяем валидность результата
         if np.isnan(z) or np.isinf(z):
             z = 0.0
         
         return z
     
     def _calculate_dynamic_weights(self) -> Dict[str, float]:
-        """Расчет динамических весов моделей с приоритетом для регрессоров"""
         weights = {}
         
-        # Коэффициенты приоритета для разных типов моделей
         model_priorities = {
-            'sarima': 0.8,      # Меньший приоритет для SARIMA
-            'xgboost': 1.3,     # Больший приоритет для регрессоров
-            'catboost': 1.3,    # Больший приоритет для регрессоров
-            'lstm': 1.0         # Нейтральный приоритет для LSTM
+            'sarima': 0.8,
+            'xgboost': 1.3,
+            'catboost': 1.3,
+            'lstm': 1.0
         }
         
         for model_name in self.model_names:
             z = self._calculate_reliability_score(model_name)
-            # Проверяем, что z является числом
             if np.isnan(z) or np.isinf(z):
                 z = 0.0
             
-            # Применяем приоритет модели
             priority = model_priorities.get(model_name, 1.0)
             adjusted_z = z * priority
             
-            weights[model_name] = expit(adjusted_z)  # сигмоида для [0, 1]
+            weights[model_name] = expit(adjusted_z)
         
-        # Нормализация весов
         total = sum(weights.values())
         if total > 0 and not np.isnan(total) and not np.isinf(total):
             weights = {k: v/total for k, v in weights.items()}
         else:
-            # Если нет валидных весов, используем приоритетные веса
             total_priority = sum(model_priorities.values())
             weights = {k: model_priorities[k]/total_priority for k in self.model_names}
         
-        # Дополнительная проверка на валидность
         for k, v in weights.items():
             if np.isnan(v) or np.isinf(v) or v is None:
-                # Используем приоритетный вес как fallback
                 priority = model_priorities.get(k, 1.0)
                 total_priority = sum(model_priorities.values())
                 weights[k] = priority / total_priority
@@ -196,7 +171,6 @@ class DMENModel(BaseModel):
         return weights
     
     def _update_theta_matrix(self, errors: Dict[str, float]):
-        """Обновление матрицы взаимного усиления"""
         model_idx = {name: i for i, name in enumerate(self.model_names)}
         
         for i, model_i in enumerate(self.model_names):
@@ -208,27 +182,39 @@ class DMENModel(BaseModel):
                     continue
                 
                 if len(self.residuals_history[model_j]) > 0:
-                    # Градиент по theta_ij
                     e_i = errors[model_i]
                     r_j = list(self.residuals_history[model_j])[-1]
                     phi_i = self.dynamic_weights.get(model_i, 0.25)
                     
                     gradient = -2 * e_i * r_j * phi_i
                     
-                    # Обновление с ограничением
-                    self.theta[i, j] -= self.learning_rate * gradient
-                    self.theta[i, j] = np.clip(self.theta[i, j], -1, 1)
+                    if len(self.residuals_history[model_j]) >= 5:
+                        recent_residuals = list(self.residuals_history[model_j])[-5:]
+                        residual_stability = 1 / (1 + np.std(recent_residuals))
+                        adaptive_lr = self.learning_rate * (0.5 + residual_stability)
+                    else:
+                        adaptive_lr = self.learning_rate
+                    
+                    if not hasattr(self, 'theta_momentum'):
+                        self.theta_momentum = np.zeros_like(self.theta)
+                    
+                    momentum_factor = 0.9
+                    self.theta_momentum[i, j] = momentum_factor * self.theta_momentum[i, j] + (1 - momentum_factor) * gradient
+                    
+                    self.theta[i, j] -= adaptive_lr * self.theta_momentum[i, j]
+                    
+                    decay_factor = 0.999
+                    self.theta[i, j] *= decay_factor
+                    self.theta[i, j] = np.clip(self.theta[i, j], -2, 2)
     
     def _enhance_features(self, X: np.ndarray, model_name: str) -> np.ndarray:
-        """Усиление признаков остатками других моделей"""
         if model_name not in self.model_names:
             return X
             
         model_idx = self.model_names.index(model_name)
         enhanced_X = X.copy()
         
-        # Добавляем взвешенные остатки других моделей
-        enhancement = np.zeros(X.shape[0])
+        enhancements = []
         
         for j, other_model in enumerate(self.model_names):
             if j == model_idx or other_model not in self.residuals_history:
@@ -236,55 +222,145 @@ class DMENModel(BaseModel):
             
             if len(self.residuals_history[other_model]) > 0:
                 recent_residuals = list(self.residuals_history[other_model])
-                # Берем последние остатки, соответствующие размеру X
-                residuals_to_use = recent_residuals[-X.shape[0]:]
                 
+                residuals_to_use = recent_residuals[-X.shape[0]:]
                 if len(residuals_to_use) == X.shape[0]:
-                    enhancement += self.theta[model_idx, j] * np.array(residuals_to_use)
+                    direct_enhancement = self.theta[model_idx, j] * np.array(residuals_to_use)
+                    enhancements.append(direct_enhancement)
                 elif len(residuals_to_use) > 0:
-                    # Если размеры не совпадают, используем последнее значение
-                    enhancement += self.theta[model_idx, j] * residuals_to_use[-1]
+                    direct_enhancement = np.full(X.shape[0], self.theta[model_idx, j] * residuals_to_use[-1])
+                    enhancements.append(direct_enhancement)
+                
+                if len(recent_residuals) >= 3:
+                    window_size = min(5, len(recent_residuals))
+                    smoothed_residuals = pd.Series(recent_residuals).rolling(window_size, min_periods=1).mean().values
+                    smoothed_to_use = smoothed_residuals[-X.shape[0]:]
+                    if len(smoothed_to_use) == X.shape[0]:
+                        smoothed_enhancement = self.theta[model_idx, j] * 0.5 * np.array(smoothed_to_use)
+                        enhancements.append(smoothed_enhancement)
+                
+                if len(recent_residuals) >= 3:
+                    residual_trend = np.diff(recent_residuals[-3:])
+                    if len(residual_trend) > 0:
+                        trend_signal = np.mean(residual_trend)
+                        trend_enhancement = np.full(X.shape[0], self.theta[model_idx, j] * 0.3 * trend_signal)
+                        enhancements.append(trend_enhancement)
+                
+                if len(recent_residuals) >= 5:
+                    residual_volatility = np.std(recent_residuals[-5:])
+                    volatility_signal = residual_volatility * np.sign(recent_residuals[-1])
+                    volatility_enhancement = np.full(X.shape[0], self.theta[model_idx, j] * 0.2 * volatility_signal)
+                    enhancements.append(volatility_enhancement)
         
-        # Добавляем усиление как новый признак
-        if enhancement.any():
-            enhanced_X = np.column_stack([enhanced_X, enhancement])
+        if enhancements:
+            total_enhancement = np.sum(enhancements, axis=0)
+            enhanced_X = np.column_stack([enhanced_X, total_enhancement])
+            
+            avg_enhancement = np.mean(enhancements, axis=0)
+            enhanced_X = np.column_stack([enhanced_X, avg_enhancement])
+            
+            max_enhancement = np.max(np.abs(enhancements), axis=0) * np.sign(total_enhancement)
+            enhanced_X = np.column_stack([enhanced_X, max_enhancement])
+            
+            if len(enhancements) > 1:
+                enhancement_signs = np.sign(enhancements)
+                consensus = np.mean(enhancement_signs, axis=0)
+                enhanced_X = np.column_stack([enhanced_X, consensus])
         
         return enhanced_X
     
     def _create_basic_features(self, y: pd.Series) -> np.ndarray:
-        """Создание базовых признаков из временного ряда"""
         n = len(y)
         features = []
         
-        # Временной индекс
-        features.append(np.arange(n).reshape(-1, 1))
+        time_idx = np.arange(n) / n
+        features.append(time_idx.reshape(-1, 1))
         
-        # Лаги
-        for lag in [1, 7, 14]:
+        for lag in [1, 2, 3, 7, 14, 21, 30]:
             if lag < n:
                 lagged = np.concatenate([np.full(lag, y.iloc[0]), y.iloc[:-lag]])
                 features.append(lagged.reshape(-1, 1))
         
-        # Скользящие средние
-        for window in [7, 14]:
+        diff1 = np.concatenate([[0], np.diff(y.values)])
+        features.append(diff1.reshape(-1, 1))
+        
+        if n > 2:
+            diff2 = np.concatenate([[0, 0], np.diff(y.values, n=2)])
+            features.append(diff2.reshape(-1, 1))
+        
+        for window in [3, 7, 14, 21, 30]:
             if window < n:
                 ma = y.rolling(window, min_periods=1).mean().values
                 features.append(ma.reshape(-1, 1))
+                
+                std = y.rolling(window, min_periods=1).std().fillna(0).values
+                features.append(std.reshape(-1, 1))
         
-        # Временные признаки, если индекс - datetime
+        for alpha in [0.1, 0.3, 0.5]:
+            ema = y.ewm(alpha=alpha).mean().values
+            features.append(ema.reshape(-1, 1))
+        
+        for window in [7, 14]:
+            if window < n:
+                rolling_min = y.rolling(window, min_periods=1).min().values
+                rolling_max = y.rolling(window, min_periods=1).max().values
+                features.append(rolling_min.reshape(-1, 1))
+                features.append(rolling_max.reshape(-1, 1))
+                
+                rolling_median = y.rolling(window, min_periods=1).median().values
+                features.append(rolling_median.reshape(-1, 1))
+                
+                rolling_q25 = y.rolling(window, min_periods=1).quantile(0.25).values
+                rolling_q75 = y.rolling(window, min_periods=1).quantile(0.75).values
+                features.append(rolling_q25.reshape(-1, 1))
+                features.append(rolling_q75.reshape(-1, 1))
+        
         if isinstance(y.index, pd.DatetimeIndex):
-            features.append((y.index.dayofweek).values.reshape(-1, 1))
-            features.append((y.index.month).values.reshape(-1, 1))
+            day_of_year = y.index.dayofyear
+            features.append(np.sin(2 * np.pi * day_of_year / 365).values.reshape(-1, 1))
+            features.append(np.cos(2 * np.pi * day_of_year / 365).values.reshape(-1, 1))
+            
+            month = y.index.month
+            features.append(np.sin(2 * np.pi * month / 12).values.reshape(-1, 1))
+            features.append(np.cos(2 * np.pi * month / 12).values.reshape(-1, 1))
+            
+            day_of_week = y.index.dayofweek
+            features.append(np.sin(2 * np.pi * day_of_week / 7).values.reshape(-1, 1))
+            features.append(np.cos(2 * np.pi * day_of_week / 7).values.reshape(-1, 1))
+            
             features.append((y.index.quarter).values.reshape(-1, 1))
+            features.append((y.index.day).values.reshape(-1, 1))
+            features.append((y.index.hour if hasattr(y.index, 'hour') else np.zeros(n)).reshape(-1, 1))
         else:
-            # День недели и месяц (синтетические)
-            features.append((np.arange(n) % 7).reshape(-1, 1))
-            features.append((np.arange(n) // 30 % 12).reshape(-1, 1))
+            features.append(np.sin(2 * np.pi * np.arange(n) / 7).reshape(-1, 1))
+            features.append(np.cos(2 * np.pi * np.arange(n) / 7).reshape(-1, 1))
+            features.append(np.sin(2 * np.pi * np.arange(n) / 30).reshape(-1, 1))
+            features.append(np.cos(2 * np.pi * np.arange(n) / 30).reshape(-1, 1))
+        
+        delta = np.diff(y.values)
+        gain = np.where(delta > 0, delta, 0)
+        loss = np.where(delta < 0, -delta, 0)
+        
+        if len(gain) > 14:
+            avg_gain = pd.Series(gain).rolling(14, min_periods=1).mean().values
+            avg_loss = pd.Series(loss).rolling(14, min_periods=1).mean().values
+            rs = avg_gain / (avg_loss + 1e-8)
+            rsi = 100 - (100 / (1 + rs))
+            rsi = np.concatenate([[50], rsi])
+            features.append(rsi.reshape(-1, 1))
+        
+        if n > 20:
+            bb_window = min(20, n//2)
+            bb_mean = y.rolling(bb_window, min_periods=1).mean().values
+            bb_std = y.rolling(bb_window, min_periods=1).std().fillna(0).values
+            bb_upper = bb_mean + 2 * bb_std
+            bb_lower = bb_mean - 2 * bb_std
+            bb_position = (y.values - bb_lower) / (bb_upper - bb_lower + 1e-8)
+            features.append(bb_position.reshape(-1, 1))
         
         return np.hstack(features)
     
     def _create_sequences(self, X: np.ndarray, y: np.ndarray, seq_length: int) -> Tuple[np.ndarray, np.ndarray]:
-        """Создание последовательностей для LSTM"""
         sequences = []
         targets = []
         
@@ -295,18 +371,14 @@ class DMENModel(BaseModel):
         return np.array(sequences), np.array(targets)
     
     def _get_categorical_features(self, X: np.ndarray) -> List[int]:
-        """Определение категориальных признаков для CatBoost"""
         return []
     
     def fit(self, df: pd.DataFrame, target_col: str, progress_callback=None) -> Tuple[Any, Dict]:
-        """Обучение DMEN"""
         if target_col not in df.columns:
             raise ValueError(f"Целевая переменная '{target_col}' не найдена в данных")
         
-        # Подготовка данных
         y = df[target_col]
         
-        # Создаем признаки из всех доступных колонок или базовые признаки
         feature_cols = [col for col in df.columns if col != target_col]
         if feature_cols:
             X = df[feature_cols].values
@@ -315,22 +387,19 @@ class DMENModel(BaseModel):
             X = self._create_basic_features(y)
             self.feature_names = [f'feature_{i}' for i in range(X.shape[1])]
         
-        # Разделение на обучение и валидацию
         val_size = min(30, len(y) // 5)
         train_size = len(y) - val_size
         
         y_train, y_val = y.iloc[:train_size], y.iloc[train_size:]
         X_train, X_val = X[:train_size], X[train_size:]
         
-        total_steps = 4  # количество моделей
+        total_steps = 4
         current_step = 0
         
-        # 1. Обучение SARIMA
         if progress_callback:
             progress_callback(current_step, total_steps)
         
         try:
-            # Пробуем разные конфигурации SARIMA
             sarima_configs = [
                 ((2, 1, 2), (1, 0, 1, 7)),
                 ((1, 1, 1), (0, 0, 0, 0)),
@@ -357,19 +426,16 @@ class DMENModel(BaseModel):
             if best_sarima is not None:
                 self.models['sarima'] = best_sarima
             else:
-                # Fallback к простой ARIMA
                 self.models['sarima'] = ARIMA(y_train, order=(1, 1, 1)).fit()
                 
         except Exception as e:
             print(f"Ошибка обучения SARIMA: {e}")
-            # Создаем заглушку
             self.models['sarima'] = None
         
         current_step += 1
         if progress_callback:
             progress_callback(current_step, total_steps)
         
-        # 2. Обучение XGBoost
         try:
             self.models['xgboost'] = xgb.XGBRegressor(
                 n_estimators=self.n_estimators,
@@ -387,7 +453,6 @@ class DMENModel(BaseModel):
         if progress_callback:
             progress_callback(current_step, total_steps)
         
-        # 3. Обучение CatBoost
         try:
             cat_features = self._get_categorical_features(X_train)
             self.models['catboost'] = CatBoostRegressor(
@@ -397,7 +462,6 @@ class DMENModel(BaseModel):
                 random_seed=42,
                 verbose=False
             )
-            # Передаем cat_features только если есть категориальные признаки
             if cat_features:
                 self.models['catboost'].fit(X_train, y_train, cat_features=cat_features)
             else:
@@ -410,7 +474,6 @@ class DMENModel(BaseModel):
         if progress_callback:
             progress_callback(current_step, total_steps)
         
-        # 4. Обучение LSTM
         if TENSORFLOW_AVAILABLE:
             try:
                 seq_length = min(7, len(y_train) // 4)
@@ -440,29 +503,26 @@ class DMENModel(BaseModel):
         if progress_callback:
             progress_callback(current_step, total_steps)
         
-        # Инициализация историй на валидационных данных
         self._initialize_histories_with_validation(X_val, y_val)
         
-        # Настройка матрицы theta через несколько итераций
-        for epoch in range(10):
+        for epoch in range(25):
             self._validation_epoch(X_val, y_val)
+            
+            if epoch % 5 == 0:
+                self.dynamic_weights = self._calculate_dynamic_weights()
         
-        # Обновляем динамические веса
         self.dynamic_weights = self._calculate_dynamic_weights()
         
         self._is_fitted = True
         
-        # Сохраняем данные для состояния
         if state.get('feature_df') is None:
             state.set('feature_df', df.copy())
         
         return self, {}
     
     def _initialize_histories_with_validation(self, X_val: np.ndarray, y_val: pd.Series):
-        """Инициализация историй на валидационных данных"""
         self.recent_history = deque(maxlen=max(30, self.window_size))
         
-        # Заполняем начальными значениями
         for i in range(len(y_val)):
             self.y_true_history.append(y_val.iloc[i])
             
@@ -478,9 +538,9 @@ class DMENModel(BaseModel):
                                 X_seq = X_val[i-self.lstm_seq_length:i].reshape(1, self.lstm_seq_length, -1)
                                 pred = self.models['lstm'].predict(X_seq, verbose=0)[0, 0]
                             else:
-                                pred = y_val.iloc[i]  # fallback
+                                pred = y_val.iloc[i]
                         else:
-                            pred = y_val.iloc[i]  # fallback
+                            pred = y_val.iloc[i]
                         
                         self.y_pred_history[model_name].append(pred)
                         error = y_val.iloc[i] - pred
@@ -488,14 +548,12 @@ class DMENModel(BaseModel):
                         self.residuals_history[model_name].append(error)
                         
                     except Exception as e:
-                        # В случае ошибки используем среднее значение
                         pred = y_val.iloc[i]
                         self.y_pred_history[model_name].append(pred)
                         self.performance_history[model_name].append(0)
                         self.residuals_history[model_name].append(0)
     
     def _validation_epoch(self, X_val: np.ndarray, y_val: pd.Series):
-        """Одна эпоха валидации для настройки theta"""
         for i in range(len(y_val)):
             step_errors = {}
             
@@ -504,10 +562,8 @@ class DMENModel(BaseModel):
                     continue
                 
                 try:
-                    # Получаем усиленные признаки
                     X_enhanced = self._enhance_features(X_val[i:i+1], model_name)
                     
-                    # Прогноз
                     if model_name == 'sarima':
                         pred = self.models['sarima'].forecast(steps=1)[0]
                     elif model_name in ['xgboost', 'catboost']:
@@ -524,19 +580,15 @@ class DMENModel(BaseModel):
                     error = y_val.iloc[i] - pred
                     step_errors[model_name] = error
                     
-                    # Обновляем истории
                     self.residuals_history[model_name].append(error)
                     
                 except Exception as e:
-                    # В случае ошибки пропускаем
                     continue
             
-            # Обновляем матрицу theta
             if step_errors:
                 self._update_theta_matrix(step_errors)
     
     def cross_validate(self, df: pd.DataFrame, target_col: str, progress_callback=None) -> Dict[str, List[float]]:
-        """Кросс-валидация DMEN"""
         tscv = TimeSeriesSplit(n_splits=self.n_splits)
         cv_metrics = {'mse': [], 'mae': [], 'r2': []}
         
@@ -554,14 +606,13 @@ class DMENModel(BaseModel):
         
         for i, (train_idx, test_idx) in enumerate(tscv.split(X)):
             try:
-                # Создаем временную модель для этого фолда
                 temp_config = ModelConfig(
                     target_col=target_col,
                     window_size=self.window_size,
                     learning_rate=self.learning_rate,
                     n_estimators=self.n_estimators,
                     max_depth=self.max_depth,
-                    epochs=min(20, self.epochs),  # Уменьшаем эпохи для CV
+                    epochs=min(20, self.epochs),
                     batch_size=self.batch_size,
                     alpha=self.alpha,
                     beta=self.beta,
@@ -570,26 +621,21 @@ class DMENModel(BaseModel):
                 
                 temp_model = DMENModel(temp_config)
                 
-                # Обучаем на тренировочных данных
                 train_df = df.iloc[train_idx]
                 temp_model.fit(train_df, target_col)
                 
-                # Прогнозируем на тестовых данных
                 test_df = df.iloc[test_idx]
                 horizon = len(test_idx)
                 
-                # Используем последние данные из тренировочного набора для прогноза
                 forecast_series, _ = temp_model.forecast(train_df, horizon)
                 
                 y_test = test_df[target_col].values
                 y_pred = forecast_series.values
                 
-                # Обрезаем до минимальной длины
                 min_len = min(len(y_test), len(y_pred))
                 y_test = y_test[:min_len]
                 y_pred = y_pred[:min_len]
                 
-                # Вычисляем метрики
                 cv_metrics['mse'].append(mean_squared_error(y_test, y_pred))
                 cv_metrics['mae'].append(mean_absolute_error(y_test, y_pred))
                 cv_metrics['r2'].append(r2_score(y_test, y_pred))
@@ -605,7 +651,6 @@ class DMENModel(BaseModel):
             if progress_callback:
                 progress_callback(i+1, self.n_splits)
         
-        # Сохраняем данные последнего фолда для визуализации
         if last_test_idx is not None:
             self.test_data = {
                 'dates': df.index[last_test_idx],
@@ -617,121 +662,95 @@ class DMENModel(BaseModel):
         return cv_metrics
     
     def forecast(self, ts: pd.DataFrame, horizon: int, progress_callback=None) -> Tuple[pd.Series, Optional[pd.DataFrame]]:
-        """Прогнозирование с динамическим взаимным усилением"""
         if not self._is_fitted:
             raise ValueError("Модель не обучена. Вызовите fit() сначала.")
         
         target_col = self.config.target_col
         predictions = []
         
-        # Подготовка признаков
         feature_cols = [col for col in ts.columns if col != target_col]
         if feature_cols:
             X_base = ts[feature_cols].values
         else:
             X_base = self._create_basic_features(ts[target_col])
         
-        # Создаем будущие даты
         if isinstance(ts.index, pd.DatetimeIndex):
             last_date = ts.index[-1]
             future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=horizon, freq='D')
         else:
             future_dates = pd.RangeIndex(start=len(ts), stop=len(ts) + horizon)
         
-        # Инициализируем историю последними значениями
         recent_values = ts[target_col].tail(self.window_size).values
         self.recent_history = deque(recent_values, maxlen=max(30, self.window_size))
         
         for h in range(horizon):
             step_predictions = {}
             
-            # Получаем прогнозы от каждой модели
             for model_name in self.model_names:
                 if model_name not in self.models or self.models[model_name] is None:
                     continue
                 
                 try:
                     if model_name == 'sarima':
-                        # SARIMA прогноз
                         pred = self.models['sarima'].forecast(steps=1)[0]
                         
                     elif model_name in ['xgboost', 'catboost']:
-                        # Создаем признаки для будущего шага
                         if h < len(X_base):
                             X_h = X_base[-(horizon-h):-(horizon-h-1)] if h < horizon-1 else X_base[-1:].copy()
                         else:
-                            # Экстраполируем признаки
                             X_h = X_base[-1:].copy()
                         
-                        # Усиливаем признаки остатками других моделей
                         X_enhanced = self._enhance_features(X_h, model_name)
                         
-                        # Прогноз
                         pred = self.models[model_name].predict(X_enhanced)[0]
                         
                     elif model_name == 'lstm' and hasattr(self, 'lstm_seq_length'):
-                        # LSTM требует последовательность
                         if len(self.recent_history) >= self.lstm_seq_length:
-                            # Берем последние значения для создания последовательности
                             recent_values = list(self.recent_history)[-self.lstm_seq_length:]
                             
-                            # Создаем признаки для последовательности
                             if len(X_base) >= self.lstm_seq_length:
                                 X_seq = X_base[-self.lstm_seq_length:].reshape(1, self.lstm_seq_length, -1)
                             else:
-                                # Дополняем последовательность
                                 X_seq = np.tile(X_base[-1], (self.lstm_seq_length, 1)).reshape(1, self.lstm_seq_length, -1)
                             
                             pred = self.models['lstm'].predict(X_seq, verbose=0)[0, 0]
                         else:
                             pred = np.mean(list(self.recent_history)) if self.recent_history else 0
                     else:
-                        # Fallback
                         pred = np.mean(list(self.recent_history)) if self.recent_history else 0
                     
                     step_predictions[model_name] = pred
                     
                 except Exception as e:
-                    # В случае ошибки используем среднее значение
                     pred = np.mean(list(self.recent_history)) if self.recent_history else 0
                     step_predictions[model_name] = pred
             
-            # Обновляем динамические веса
             self.dynamic_weights = self._calculate_dynamic_weights()
             
-            # Взвешенная комбинация
             if step_predictions:
-                final_prediction = sum(
-                    (self.dynamic_weights.get(model, self._get_default_weight(model)) or self._get_default_weight(model)) * pred 
-                    for model, pred in step_predictions.items()
-                )
+                final_prediction = self._advanced_ensemble_prediction(step_predictions)
             else:
                 final_prediction = np.mean(list(self.recent_history)) if self.recent_history else 0
             
             predictions.append(final_prediction)
             
-            # Обновляем историю для следующего шага
             self.recent_history.append(final_prediction)
             
-            # Обновляем остатки (используем простую эвристику)
             for model_name, pred in step_predictions.items():
-                residual = final_prediction - pred  # Разность между ансамблем и индивидуальной моделью
+                residual = final_prediction - pred
                 self.residuals_history[model_name].append(residual)
             
             if progress_callback:
                 progress_callback(h+1, horizon)
         
-        # Создаем Series с прогнозом
         forecast_series = pd.Series(predictions, index=future_dates)
         
-        return forecast_series, None  # DMEN не предоставляет доверительные интервалы
+        return forecast_series, None
     
     def get_metrics(self) -> Dict[str, float]:
-        """Получить метрики производительности"""
         if self.cv_metrics is None:
             return {}
         
-        # Возвращаем средние значения метрик
         return {
             'mse': np.mean(self.cv_metrics['mse']) if self.cv_metrics['mse'] else 0,
             'mae': np.mean(self.cv_metrics['mae']) if self.cv_metrics['mae'] else 0,
@@ -739,7 +758,6 @@ class DMENModel(BaseModel):
         }
     
     def plot_test_predictions(self) -> go.Figure:
-        """Построить график прогноз vs факт для последнего тестового фолда"""
         if not hasattr(self, 'test_data') or self.test_data is None:
             raise ValueError("Нет данных теста для построения графика. Сначала выполните cross_validate().")
         
@@ -772,10 +790,8 @@ class DMENModel(BaseModel):
         return fig
     
     def plot_forecast(self, ts: pd.Series, forecast: pd.Series, conf_int: Optional[pd.DataFrame] = None) -> go.Figure:
-        """Построить график прогноза"""
         fig = go.Figure()
         
-        # Исторические данные
         fig.add_trace(go.Scatter(
             x=ts.index,
             y=ts.values,
@@ -784,7 +800,6 @@ class DMENModel(BaseModel):
             line=dict(color='blue')
         ))
         
-        # Прогноз
         fig.add_trace(go.Scatter(
             x=forecast.index,
             y=forecast.values,
@@ -804,15 +819,12 @@ class DMENModel(BaseModel):
         return fig
     
     def get_model_weights(self) -> Dict[str, float]:
-        """Получить текущие динамические веса моделей"""
         return self.dynamic_weights.copy()
     
     def get_theta_matrix(self) -> np.ndarray:
-        """Получить матрицу взаимного усиления"""
         return self.theta.copy()
     
     def plot_model_weights(self) -> go.Figure:
-        """Построить график динамических весов моделей"""
         weights = self.get_model_weights()
         
         fig = go.Figure(data=[
@@ -833,12 +845,102 @@ class DMENModel(BaseModel):
         return fig
     
     def _get_default_weight(self, model_name: str) -> float:
-        """Получить приоритетный вес для модели"""
         model_priorities = {
-            'sarima': 0.8,      # Меньший приоритет для SARIMA
-            'xgboost': 1.3,     # Больший приоритет для регрессоров
-            'catboost': 1.3,    # Больший приоритет для регрессоров
-            'lstm': 1.0         # Нейтральный приоритет для LSTM
+            'sarima': 0.8,
+            'xgboost': 1.3,
+            'catboost': 1.3,
+            'lstm': 1.0
         }
         total_priority = sum(model_priorities.values())
         return model_priorities.get(model_name, 1.0) / total_priority 
+
+    def _advanced_ensemble_prediction(self, predictions: Dict[str, float]) -> float:
+        if not predictions:
+            return 0.0
+        
+        basic_prediction = sum(
+            (self.dynamic_weights.get(model, self._get_default_weight(model)) or self._get_default_weight(model)) * pred 
+            for model, pred in predictions.items()
+        )
+        
+        pred_values = list(predictions.values())
+        pred_std = np.std(pred_values)
+        pred_mean = np.mean(pred_values)
+        
+        if pred_mean != 0:
+            consensus_factor = 1 / (1 + pred_std / abs(pred_mean))
+        else:
+            consensus_factor = 1 / (1 + pred_std)
+        
+        median_prediction = np.median(pred_values)
+        
+        sorted_predictions = sorted(predictions.items(), key=lambda x: x[1])
+        cumulative_weight = 0
+        weighted_median = pred_mean
+        
+        total_weight = sum(self.dynamic_weights.get(model, self._get_default_weight(model)) 
+                          for model in predictions.keys())
+        
+        for model, pred in sorted_predictions:
+            weight = self.dynamic_weights.get(model, self._get_default_weight(model))
+            cumulative_weight += weight
+            if cumulative_weight >= total_weight / 2:
+                weighted_median = pred
+                break
+        
+        recent_performance_weights = {}
+        for model in predictions.keys():
+            if len(self.performance_history[model]) >= 3:
+                recent_errors = list(self.performance_history[model])[-3:]
+                recent_performance = 1 / (1 + np.mean(np.abs(recent_errors)))
+                recent_performance_weights[model] = recent_performance
+            else:
+                recent_performance_weights[model] = 0.5
+        
+        total_perf_weight = sum(recent_performance_weights.values())
+        if total_perf_weight > 0:
+            recent_performance_weights = {k: v/total_perf_weight for k, v in recent_performance_weights.items()}
+        
+        performance_prediction = sum(
+            recent_performance_weights.get(model, 0.25) * pred 
+            for model, pred in predictions.items()
+        )
+        
+        outlier_threshold = 2 * pred_std
+        filtered_predictions = {}
+        for model, pred in predictions.items():
+            if abs(pred - pred_mean) <= outlier_threshold:
+                filtered_predictions[model] = pred
+            else:
+                filtered_predictions[model] = pred_mean + 0.5 * (pred - pred_mean)
+        
+        filtered_prediction = sum(
+            (self.dynamic_weights.get(model, self._get_default_weight(model)) or self._get_default_weight(model)) * pred 
+            for model, pred in filtered_predictions.items()
+        )
+        
+        strategy_weights = {
+            'basic': 0.3,
+            'median': 0.15 * consensus_factor,
+            'weighted_median': 0.2,
+            'performance': 0.25,
+            'filtered': 0.1
+        }
+        
+        total_strategy_weight = sum(strategy_weights.values())
+        strategy_weights = {k: v/total_strategy_weight for k, v in strategy_weights.items()}
+        
+        final_prediction = (
+            strategy_weights['basic'] * basic_prediction +
+            strategy_weights['median'] * median_prediction +
+            strategy_weights['weighted_median'] * weighted_median +
+            strategy_weights['performance'] * performance_prediction +
+            strategy_weights['filtered'] * filtered_prediction
+        )
+        
+        if len(self.recent_history) >= 3:
+            recent_trend = np.mean(np.diff(list(self.recent_history)[-3:]))
+            trend_correction = 0.1 * recent_trend
+            final_prediction += trend_correction
+        
+        return final_prediction 

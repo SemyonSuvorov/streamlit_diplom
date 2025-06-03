@@ -122,10 +122,10 @@ def create_box_plot(
     
     fig = go.Figure()
     
-    # Convert to datetime if not already
+
     df[x_col] = pd.to_datetime(df[x_col])
     
-    # Group by period if specified
+
     if period:
         freq_map = {"День": "D", "Неделя": "W", "Месяц": "M", "Год": "Y"}
         df['period'] = df[x_col].dt.to_period(freq_map[period])
